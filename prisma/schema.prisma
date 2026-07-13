@@ -1,13 +1,12 @@
-// BookKing 데이터 모델
-// 로컬 개발: SQLite / Vercel 배포: provider를 "postgresql"로 바꾸고 DATABASE_URL 교체
-// (SQLite 호환을 위해 enum 대신 String 상수 사용 — src/lib/constants.ts 참고)
+// BookKing 데이터 모델 — Neon PostgreSQL
+// (enum 대신 String 상수 사용 — src/lib/constants.ts 참고)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

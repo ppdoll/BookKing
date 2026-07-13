@@ -3,7 +3,7 @@
 그룹원끼리 읽은 책을 기록하고, 별점·문장·느낀 점을 나누고, 랭킹을 겨루는 독서 기록 서비스.
 
 - **스택**: Next.js 15 (App Router) · TypeScript · Prisma · Auth.js(Google 로그인) · 네이버 책 검색 API
-- **DB**: 로컬 개발 SQLite / 배포 PostgreSQL (Neon·Supabase)
+- **DB**: Neon PostgreSQL (로컬·배포 공용)
 - **배포**: Vercel
 - 기능 명세는 [REQUIREMENTS.md](./REQUIREMENTS.md) 참고
 
@@ -11,13 +11,12 @@
 
 ```bash
 npm install
-npx prisma db push   # dev.db(SQLite) 생성
+# .env 파일에 DATABASE_URL 등 입력 (.env.example 참고)
+npx prisma db push   # DB 테이블 생성 (최초 1회)
 npm run dev          # http://localhost:3000
 ```
 
-Google/네이버 키가 없어도 바로 써볼 수 있어요:
-
-- 로그인 화면의 **게스트 로그인**(개발용)으로 입장 — `.env`의 `ALLOW_DEV_LOGIN="true"`일 때만 표시
+- 로그인 화면의 **게스트 로그인**(개발용)은 `.env`의 `ALLOW_DEV_LOGIN="true"`일 때만 표시돼요
 - **책정보 생성/네이버 검색**은 키가 없으면 안내 메시지가 나오고, 직접 입력으로 등록 가능
 
 ## API 키 발급 (무료)
@@ -38,17 +37,16 @@ Google/네이버 키가 없어도 바로 써볼 수 있어요:
 
 ## Vercel 배포
 
-1. **DB 준비**: [Neon](https://neon.tech)(또는 Supabase)에서 Postgres 생성 → 연결 문자열 복사
-2. **스키마 전환**: `prisma/schema.prisma`의 `provider = "sqlite"` → `"postgresql"`로 변경
-3. GitHub에 푸시 후 Vercel에서 Import (또는 `npx vercel`)
-4. Vercel 환경변수 설정 (`.env.example` 참고):
+1. [vercel.com](https://vercel.com)에 **개인 GitHub 계정으로 가입** → Add New → Project → `BookKing` 리포 Import
+2. Import 화면의 **Environment Variables**에 입력 (`.env.example` 참고):
    - `DATABASE_URL` — Neon 연결 문자열
-   - `AUTH_SECRET` — `npx auth secret`으로 생성
+   - `AUTH_SECRET` — 새 랜덤 값 (`npx auth secret`)
    - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
    - `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET`
    - ⚠️ `ALLOW_DEV_LOGIN`은 설정하지 않기 (게스트 로그인 차단)
-5. 최초 1회 테이블 생성: 로컬에서 `DATABASE_URL`을 Neon 주소로 바꾼 뒤 `npx prisma db push`
-6. Google OAuth 리디렉션 URI에 배포 도메인 추가
+3. Deploy 클릭 — 이후 `git push`만 하면 자동 재배포
+4. 배포 도메인 확인 후 **Google OAuth 리디렉션 URI 추가**:
+   `https://<도메인>/api/auth/callback/google`
 
 ## 구조 한눈에 보기
 
