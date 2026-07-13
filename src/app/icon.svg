@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- BookKing 파비콘 — 왕관 쓴 책 (툰 스타일) -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#FF8A5C" stroke="#3B2F28" stroke-width="3"/>
+  <path d="M19 26 L23 13 L28.5 19 L32 10 L35.5 19 L41 13 L45 26 Z" fill="#FFC94D" stroke="#3B2F28" stroke-width="2.5" stroke-linejoin="round"/>
+  <rect x="16.5" y="24" width="31" height="29" rx="4" fill="#FFF6E9" stroke="#3B2F28" stroke-width="3"/>
+  <line x1="23.5" y1="25.5" x2="23.5" y2="51.5" stroke="#3B2F28" stroke-width="2.5"/>
+  <line x1="29" y1="34" x2="42" y2="34" stroke="#3B2F28" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="29" y1="40" x2="39.5" y2="40" stroke="#4FB585" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="29" y1="46" x2="36" y2="46" stroke="#E25C4A" stroke-width="2.5" stroke-linecap="round"/>
+</svg>
