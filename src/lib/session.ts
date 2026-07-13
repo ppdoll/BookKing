@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -6,15 +7,23 @@ import { ROLE, type Role } from "@/lib/constants";
 
 export const GROUP_COOKIE = "bk_group";
 
-/** 로그인 + 이름 등록까지 끝난 사용자를 보장. 아니면 적절한 페이지로 리다이렉트 */
-export async function requireUser(nextPath?: string) {
+/**
+ * 세션의 사용자 행 조회 — React cache()로 감싸서 같은 요청 안에서
+ * layout / page / 컴포넌트가 몇 번을 호출해도 DB 쿼리는 1번만 나간다.
+ */
+const getSessionUser = cache(async () => {
   const session = await auth();
   const userId = session?.user?.id;
-  if (!userId) {
+  if (!userId) return null;
+  return prisma.user.findUnique({ where: { id: userId } });
+});
+
+/** 로그인 + 이름 등록까지 끝난 사용자를 보장. 아니면 적절한 페이지로 리다이렉트 */
+export async function requireUser(nextPath?: string) {
+  const user = await getSessionUser();
+  if (!user) {
     redirect(`/login${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""}`);
   }
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) redirect("/login");
   if (!user.name) {
     redirect(`/welcome${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""}`);
   }
@@ -23,31 +32,28 @@ export async function requireUser(nextPath?: string) {
 
 /** 로그인만 확인 (이름 등록 전 welcome 페이지에서 사용) */
 export async function requireSessionUser() {
-  const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) redirect("/login");
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const user = await getSessionUser();
   if (!user) redirect("/login");
   return user;
 }
 
-/** 사용자의 그룹 멤버십 목록 */
-export async function getMemberships(userId: string) {
+/** 사용자의 그룹 멤버십 목록 (요청 내 캐시) */
+export const getMemberships = cache(async (userId: string) => {
   return prisma.groupMember.findMany({
     where: { userId },
     include: { group: true },
     orderBy: { joinedAt: "asc" },
   });
-}
+});
 
-/** 현재 선택된 그룹의 멤버십 (쿠키 기준, 없으면 첫 그룹) */
-export async function getCurrentMembership(userId: string) {
+/** 현재 선택된 그룹의 멤버십 (쿠키 기준, 없으면 첫 그룹 — 요청 내 캐시) */
+export const getCurrentMembership = cache(async (userId: string) => {
   const memberships = await getMemberships(userId);
   if (memberships.length === 0) return null;
   const store = await cookies();
   const selected = store.get(GROUP_COOKIE)?.value;
   return memberships.find((m) => m.groupId === selected) ?? memberships[0];
-}
+});
 
 export function isAdmin(role: string) {
   return role === ROLE.ADMIN || role === ROLE.OWNER;

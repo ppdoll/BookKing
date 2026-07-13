@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { joinGroup } from "@/lib/actions/group-actions";
 import { fmtDateFull } from "@/lib/format";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export default async function JoinPage({
   params,
@@ -70,9 +71,9 @@ export default async function JoinPage({
             ) : (
               <form action={joinGroup}>
                 <input type="hidden" name="code" value={code} />
-                <button type="submit" className="btn pri" style={{ width: "100%", justifyContent: "center", padding: 11 }}>
-                  {user?.name}(으)로 가입하기
-                </button>
+                <SubmitButton className="btn pri" pendingText="가입하는 중… 🎉">
+                  <span style={{ width: "100%", textAlign: "center" }}>{user?.name}(으)로 가입하기</span>
+                </SubmitButton>
               </form>
             )}
           </>

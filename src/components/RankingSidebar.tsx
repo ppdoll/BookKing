@@ -18,8 +18,10 @@ export async function RankingSidebar({
 }) {
   const scope = rt === "all" ? "all" : "group";
   const by = rb === "count" ? "count" : "rating";
-  const books = await getBookRankings(scope === "all" ? null : groupId, by);
-  const readers = scope === "group" ? await getTopReaders(groupId, new Date().getFullYear()) : [];
+  const [books, readers] = await Promise.all([
+    getBookRankings(scope === "all" ? null : groupId, by),
+    scope === "group" ? getTopReaders(groupId, new Date().getFullYear()) : Promise.resolve([]),
+  ]);
 
   const tab = (nrt: string, nrb: string) => `/?rt=${nrt}&rb=${nrb}`;
 

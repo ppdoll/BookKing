@@ -127,4 +127,5 @@ model ReadingRecord {
 
   @@index([groupId, status, deletedAt])
   @@index([userId, groupId])
+  @@index([status, deletedAt]) // 통합 랭킹(그룹 필터 없음) 집계용
 }

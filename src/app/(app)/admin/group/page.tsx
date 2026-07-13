@@ -19,8 +19,9 @@ export default async function AdminGroupPage({
   const membership = await getCurrentMembership(user.id);
   if (!membership || !isOwner(membership.role)) redirect("/");
 
-  const [group, members, deleted] = await Promise.all([
-    prisma.group.findUnique({ where: { id: membership.groupId } }),
+  // 그룹 정보는 getCurrentMembership이 include로 이미 로드함 — 재조회 불필요
+  const group = membership.group;
+  const [members, deleted] = await Promise.all([
     prisma.groupMember.findMany({
       where: { groupId: membership.groupId },
       include: { user: { select: { id: true, name: true } } },
@@ -33,7 +34,6 @@ export default async function AdminGroupPage({
       take: 20,
     }),
   ]);
-  if (!group) redirect("/");
 
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";

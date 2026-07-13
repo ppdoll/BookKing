@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { prisma } from "@/lib/db";
 import { requireUser, getCurrentMembership } from "@/lib/session";
 import { STATUS } from "@/lib/constants";
@@ -7,6 +8,7 @@ import { startReading, finishReading } from "@/lib/actions/record-actions";
 import { getMonthlyDone } from "@/lib/rankings";
 import { Stars } from "@/components/Stars";
 import { RankingSidebar } from "@/components/RankingSidebar";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export default async function HomePage({
   searchParams,
@@ -66,7 +68,7 @@ export default async function HomePage({
                   <span className="mini">{r.book.author}</span>
                   <form action={startReading}>
                     <input type="hidden" name="recordId" value={r.id} />
-                    <button type="submit" className="btn sm pri">독서 시작!</button>
+                    <SubmitButton pendingText="시작하는 중… 📖">독서 시작!</SubmitButton>
                   </form>
                 </div>
               ))}
@@ -88,7 +90,7 @@ export default async function HomePage({
                     </span>
                     <form action={finishReading}>
                       <input type="hidden" name="recordId" value={r.id} />
-                      <button type="submit" className="btn sm pri">다 읽었어요!</button>
+                      <SubmitButton pendingText="축하 준비 중… 🎉">다 읽었어요!</SubmitButton>
                     </form>
                   </div>
                 );
@@ -183,7 +185,16 @@ export default async function HomePage({
           </section>
         </div>
 
-        <RankingSidebar groupId={membership.groupId} rt={rt} rb={rb} />
+        <Suspense
+          fallback={
+            <aside className="card">
+              <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>🏅 랭킹</h3>
+              <p className="mini">불러오는 중…</p>
+            </aside>
+          }
+        >
+          <RankingSidebar groupId={membership.groupId} rt={rt} rb={rb} />
+        </Suspense>
       </div>
     </>
   );

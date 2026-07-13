@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createRecord, updateRecord } from "@/lib/actions/record-actions";
 import { StarInput } from "@/components/StarInput";
 import { MbtiPicker } from "@/components/MbtiPicker";
+import { SubmitButton } from "@/components/SubmitButton";
 import type { NaverBook } from "@/lib/naver";
 
 export type BookFormInitial = {
@@ -180,9 +181,9 @@ export function BookForm({ mode, initial }: { mode: "create" | "edit"; initial: 
       <textarea className="input" name="review" defaultValue={initial.review ?? ""} placeholder="읽고 나서 든 생각을 자유롭게 적어보세요" />
 
       <div className="fieldrow" style={{ marginTop: 18 }}>
-        <button type="submit" className="btn pri" style={{ padding: "9px 26px" }}>
+        <SubmitButton className="btn pri" pendingText={mode === "create" ? "등록하는 중…" : "저장하는 중…"}>
           {mode === "create" ? "등록하기 🎉" : "수정 저장 ✅"}
-        </button>
+        </SubmitButton>
       </div>
     </form>
   );

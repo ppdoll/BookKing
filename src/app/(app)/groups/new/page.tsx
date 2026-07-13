@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/session";
 import { createGroup } from "@/lib/actions/group-actions";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export default async function NewGroupPage({
   searchParams,
@@ -25,9 +26,9 @@ export default async function NewGroupPage({
           <p className="mini" style={{ margin: "10px 0 0" }}>
             그룹을 만들면 <b>그룹장</b>이 되고, 7일간 유효한 초대 링크가 발급돼요.
           </p>
-          <button type="submit" className="btn pri" style={{ marginTop: 14 }}>
-            그룹 만들기 🎉
-          </button>
+          <div style={{ marginTop: 14 }}>
+            <SubmitButton className="btn pri" pendingText="그룹 만드는 중…">그룹 만들기 🎉</SubmitButton>
+          </div>
         </form>
       </div>
     </div>
