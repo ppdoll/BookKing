@@ -63,3 +63,45 @@ export async function searchNaverBooks(
 
   return { items };
 }
+
+/**
+ * 책정보 생성용 단계적 검색 — 네이버는 모든 단어를 AND로 매칭하므로
+ * 출판사/저자에 오타가 있으면 0건이 된다. 결과가 없으면 조건을 하나씩
+ * 빼면서 재시도하고, 어떤 조건으로 찾았는지 note로 알려준다.
+ */
+export async function searchNaverBooksSmart(parts: {
+  title: string;
+  author?: string;
+  publisher?: string;
+}): Promise<{ items: NaverBook[]; error?: string; note?: string }> {
+  const title = parts.title.trim();
+  const author = parts.author?.trim() ?? "";
+  const publisher = parts.publisher?.trim() ?? "";
+  if (!title) return { items: [] };
+
+  const attempts: { query: string; note?: string }[] = [];
+  if (author && publisher) {
+    attempts.push({ query: `${title} ${author} ${publisher}` });
+    attempts.push({
+      query: `${title} ${author}`,
+      note: `'${publisher}'를 빼고 제목+저자로 검색했어요. 출판사 이름을 확인해보세요.`,
+    });
+  } else if (author) {
+    attempts.push({ query: `${title} ${author}` });
+  } else {
+    attempts.push({ query: title });
+  }
+  if (author) {
+    attempts.push({
+      query: title,
+      note: `제목 '${title}'만으로 검색했어요. 저자·출판사 이름을 확인해보세요.`,
+    });
+  }
+
+  for (const attempt of attempts) {
+    const result = await searchNaverBooks(attempt.query);
+    if (result.error) return result;
+    if (result.items.length > 0) return { items: result.items, note: attempt.note };
+  }
+  return { items: [] };
+}

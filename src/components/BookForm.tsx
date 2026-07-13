@@ -35,20 +35,24 @@ export function BookForm({ mode, initial }: { mode: "create" | "edit"; initial: 
 
   const [candidates, setCandidates] = useState<NaverBook[] | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchNote, setSearchNote] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
 
   async function generateBookInfo() {
-    const query = [title, author, publisher].filter(Boolean).join(" ").trim();
-    if (!query) {
+    if (!title.trim()) {
       setSearchError("먼저 책 제목을 입력해주세요.");
+      setCandidates(null);
       return;
     }
     setSearching(true);
     setSearchError(null);
+    setSearchNote(null);
     try {
-      const res = await fetch(`/api/naver-books?query=${encodeURIComponent(query)}`);
-      const data = (await res.json()) as { items: NaverBook[]; error?: string };
+      const params = new URLSearchParams({ title, author, publisher });
+      const res = await fetch(`/api/naver-books?${params.toString()}`);
+      const data = (await res.json()) as { items: NaverBook[]; error?: string; note?: string };
       if (data.error) setSearchError(data.error);
+      if (data.note) setSearchNote(data.note);
       setCandidates(data.items);
     } catch {
       setSearchError("검색 중 문제가 생겼어요. 잠시 후 다시 시도해주세요.");
@@ -113,8 +117,11 @@ export function BookForm({ mode, initial }: { mode: "create" | "edit"; initial: 
       {(searchError || candidates) && (
         <div className="naver-pick">
           {searchError && <p className="mini" style={{ margin: "0 0 6px", color: "var(--danger)", fontWeight: 700 }}>{searchError}</p>}
+          {searchNote && <p className="mini" style={{ margin: "0 0 6px", fontWeight: 700 }}>💡 {searchNote}</p>}
           {candidates && candidates.length === 0 && !searchError && (
-            <p className="mini" style={{ margin: 0 }}>검색 결과가 없어요. 직접 입력한 내용으로 등록해도 괜찮아요.</p>
+            <p className="mini" style={{ margin: 0 }}>
+              검색 결과가 없어요. 제목·저자의 띄어쓰기나 오타를 확인해보세요. 직접 입력한 내용으로 등록해도 괜찮아요.
+            </p>
           )}
           {candidates && candidates.length > 0 && (
             <>
