@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { joinGroup } from "@/lib/actions/group-actions";
 import { fmtDateFull } from "@/lib/format";
 import { SubmitButton } from "@/components/SubmitButton";
+import { InAppBrowserGuard } from "@/components/InAppBrowserGuard";
 
 export default async function JoinPage({
   params,
@@ -37,6 +38,8 @@ export default async function JoinPage({
         📚 Book<em style={{ fontStyle: "normal", color: "var(--accent)" }}>King</em>
       </div>
       <p className="mini" style={{ margin: "4px 0 20px" }}>함께 읽고, 함께 기록하는 그룹 독서장</p>
+
+      <InAppBrowserGuard />
 
       <div className="card">
         {!group ? (

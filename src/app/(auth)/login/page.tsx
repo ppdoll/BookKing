@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { auth, signIn, googleEnabled, devLoginEnabled } from "@/auth";
+import { InAppBrowserGuard } from "@/components/InAppBrowserGuard";
 
 export default async function LoginPage({
   searchParams,
@@ -23,6 +24,8 @@ export default async function LoginPage({
       {error && (
         <div className="toast err">로그인에 실패했어요. 다시 시도해주세요.</div>
       )}
+
+      <InAppBrowserGuard />
 
       <div className="card">
         {googleEnabled ? (
