@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Suspense } from "react";
 import { prisma } from "@/lib/db";
 import { requireUser, getCurrentMembership } from "@/lib/session";
 import { STATUS } from "@/lib/constants";
@@ -185,16 +184,7 @@ export default async function HomePage({
           </section>
         </div>
 
-        <Suspense
-          fallback={
-            <aside className="card">
-              <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>🏅 랭킹</h3>
-              <p className="mini">불러오는 중…</p>
-            </aside>
-          }
-        >
-          <RankingSidebar groupId={membership.groupId} rt={rt} rb={rb} />
-        </Suspense>
+        <RankingSidebar groupId={membership.groupId} rt={rt} rb={rb} />
       </div>
     </>
   );
