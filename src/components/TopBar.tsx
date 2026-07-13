@@ -32,6 +32,7 @@ export function TopBar({
         <Link href="/groups/new">🌱 그룹 만들기</Link>
         {current && isAdmin(current.role) && <Link href="/admin/posts">🧹 글 관리</Link>}
         {current && isOwner(current.role) && <Link href="/admin/group">👑 그룹 관리</Link>}
+        <a href="/manual.html" target="_blank" rel="noreferrer">❓ 도움말</a>
       </nav>
       <div className="userbox">
         <b>{user.name}</b> <span className="pill p-read">{ROLE_LABEL[role]}</span>

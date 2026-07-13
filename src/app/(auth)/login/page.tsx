@@ -70,6 +70,9 @@ export default async function LoginPage({
           </form>
         )}
       </div>
+      <p className="mini" style={{ marginTop: 14 }}>
+        <a href="/manual.html" style={{ textDecoration: "underline" }}>❓ BookKing 사용 설명서 보기</a>
+      </p>
     </div>
   );
 }
