@@ -1,0 +1,113 @@
+"use server";
+
+import { randomBytes } from "node:crypto";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/db";
+import { requireUser, GROUP_COOKIE, getCurrentMembership, isOwner } from "@/lib/session";
+import { ROLE, INVITE_EXPIRY_DAYS } from "@/lib/constants";
+
+function newInviteCode() {
+  return randomBytes(6).toString("base64url"); // 8자, URL 안전
+}
+
+function inviteExpiry() {
+  return new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+}
+
+/** 그룹 생성 — 만든 사람이 그룹장 */
+export async function createGroup(formData: FormData) {
+  const user = await requireUser("/groups/new");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) redirect("/groups/new?error=empty");
+  if (name.length > 30) redirect("/groups/new?error=long");
+
+  const group = await prisma.group.create({
+    data: {
+      name,
+      ownerId: user.id,
+      inviteCode: newInviteCode(),
+      inviteExpiresAt: inviteExpiry(),
+      members: { create: { userId: user.id, role: ROLE.OWNER } },
+    },
+  });
+
+  const store = await cookies();
+  store.set(GROUP_COOKIE, group.id, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+  redirect("/admin/group?created=1");
+}
+
+/** 초대 링크로 가입 — 기본 역할은 사용자 */
+export async function joinGroup(formData: FormData) {
+  const code = String(formData.get("code") ?? "");
+  const user = await requireUser(`/join/${code}`);
+
+  const group = await prisma.group.findUnique({ where: { inviteCode: code } });
+  if (!group) redirect("/join/invalid");
+  if (group.inviteExpiresAt < new Date()) redirect(`/join/${code}?expired=1`);
+
+  await prisma.groupMember.upsert({
+    where: { userId_groupId: { userId: user.id, groupId: group.id } },
+    update: {},
+    create: { userId: user.id, groupId: group.id, role: ROLE.MEMBER },
+  });
+
+  const store = await cookies();
+  store.set(GROUP_COOKIE, group.id, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+  redirect("/?joined=1");
+}
+
+/** 초대 링크 재발급 (그룹장) — 기존 링크 무효화 */
+export async function regenerateInvite() {
+  const user = await requireUser("/admin/group");
+  const membership = await getCurrentMembership(user.id);
+  if (!membership || !isOwner(membership.role)) redirect("/");
+
+  await prisma.group.update({
+    where: { id: membership.groupId },
+    data: { inviteCode: newInviteCode(), inviteExpiresAt: inviteExpiry() },
+  });
+  revalidatePath("/admin/group");
+}
+
+/** 운영자 지정/해제 (그룹장) */
+export async function setMemberRole(formData: FormData) {
+  const user = await requireUser("/admin/group");
+  const membership = await getCurrentMembership(user.id);
+  if (!membership || !isOwner(membership.role)) redirect("/");
+
+  const memberId = String(formData.get("memberId") ?? "");
+  const role = String(formData.get("role") ?? "");
+  if (role !== ROLE.ADMIN && role !== ROLE.MEMBER) redirect("/admin/group");
+
+  const target = await prisma.groupMember.findUnique({ where: { id: memberId } });
+  // 같은 그룹 + 그룹장 자신은 변경 불가
+  if (!target || target.groupId !== membership.groupId || target.role === ROLE.OWNER) {
+    redirect("/admin/group");
+  }
+
+  await prisma.groupMember.update({ where: { id: memberId }, data: { role } });
+  revalidatePath("/admin/group");
+}
+
+/** 그룹장 위임 — 대상이 그룹장이 되고 본인은 운영자로 */
+export async function transferOwnership(formData: FormData) {
+  const user = await requireUser("/admin/group");
+  const membership = await getCurrentMembership(user.id);
+  if (!membership || !isOwner(membership.role)) redirect("/");
+
+  const memberId = String(formData.get("memberId") ?? "");
+  const target = await prisma.groupMember.findUnique({ where: { id: memberId } });
+  if (!target || target.groupId !== membership.groupId || target.userId === user.id) {
+    redirect("/admin/group");
+  }
+
+  await prisma.$transaction([
+    prisma.groupMember.update({ where: { id: target.id }, data: { role: ROLE.OWNER } }),
+    prisma.groupMember.update({ where: { id: membership.id }, data: { role: ROLE.ADMIN } }),
+    prisma.group.update({ where: { id: membership.groupId }, data: { ownerId: target.userId } }),
+  ]);
+  revalidatePath("/admin/group");
+  redirect("/admin/group?transferred=1");
+}
