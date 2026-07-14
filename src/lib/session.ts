@@ -59,6 +59,11 @@ export function isAdmin(role: string) {
   return role === ROLE.ADMIN || role === ROLE.OWNER;
 }
 
+/** 보기 전용 그룹에서는 그룹장만 기록을 등록·수정할 수 있다 */
+export function canWriteInGroup(role: string, group: { readOnly: boolean }) {
+  return !group.readOnly || role === ROLE.OWNER;
+}
+
 export function isOwner(role: string) {
   return role === ROLE.OWNER;
 }

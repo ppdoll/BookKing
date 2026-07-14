@@ -21,7 +21,7 @@ export default async function ShelfPage({
   const { st = "ALL", sort = "date", dir = "desc", created, updated } = await searchParams;
   const user = await requireUser("/shelf");
   const membership = await getCurrentMembership(user.id);
-  if (!membership) redirect("/groups/new");
+  if (!membership) redirect("/groups/search");
 
   const records = await prisma.readingRecord.findMany({
     where: {

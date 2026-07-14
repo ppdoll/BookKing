@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUser, getCurrentMembership, isAdmin, isOwner } from "@/lib/session";
+import { requireUser, getCurrentMembership, isAdmin, isOwner, canWriteInGroup } from "@/lib/session";
 import { STATUS, starsToRating } from "@/lib/constants";
 
 /** ISBN이 있으면 기존 Book 재사용(랭킹 집계용), 없으면 제목+저자로 매칭 */
@@ -83,7 +83,10 @@ function validateRecord(d: ReturnType<typeof parseRecordForm>): string | null {
 export async function createRecord(formData: FormData) {
   const user = await requireUser("/books/new");
   const membership = await getCurrentMembership(user.id);
-  if (!membership) redirect("/groups/new");
+  if (!membership) redirect("/groups/search");
+  if (!canWriteInGroup(membership.role, membership.group)) {
+    redirect(`/books/new?error=${encodeURIComponent("보기 전용 그룹이라 그룹장만 기록을 등록할 수 있어요.")}`);
+  }
 
   const d = parseRecordForm(formData);
   const error = validateRecord(d);
@@ -117,9 +120,14 @@ export async function updateRecord(formData: FormData) {
 
   const membership = await prisma.groupMember.findUnique({
     where: { userId_groupId: { userId: user.id, groupId: record.groupId } },
+    include: { group: true },
   });
   const canEdit = record.userId === user.id || (membership && isAdmin(membership.role));
   if (!canEdit) redirect("/");
+  // 보기 전용 그룹은 그룹장만 수정 가능
+  if (!membership || !canWriteInGroup(membership.role, membership.group)) {
+    redirect(`/shelf?error=${encodeURIComponent("보기 전용 그룹이라 그룹장만 수정할 수 있어요.")}`);
+  }
 
   const d = parseRecordForm(formData);
   const error = validateRecord(d);
@@ -144,12 +152,22 @@ export async function updateRecord(formData: FormData) {
   redirect("/shelf?updated=1");
 }
 
+/** 보기 전용 그룹에서 그룹장이 아니면 상태 변경 불가 */
+async function assertStatusChangeAllowed(userId: string, groupId: string) {
+  const membership = await prisma.groupMember.findUnique({
+    where: { userId_groupId: { userId, groupId } },
+    include: { group: true },
+  });
+  if (!membership || !canWriteInGroup(membership.role, membership.group)) redirect("/");
+}
+
 /** [독서 시작!] — 읽을 예정 → 독서중, 시작일 자동 입력 */
 export async function startReading(formData: FormData) {
   const user = await requireUser();
   const id = String(formData.get("recordId") ?? "");
   const record = await prisma.readingRecord.findUnique({ where: { id } });
   if (!record || record.userId !== user.id || record.deletedAt) redirect("/");
+  await assertStatusChangeAllowed(user.id, record.groupId);
 
   await prisma.readingRecord.update({
     where: { id },
@@ -164,6 +182,7 @@ export async function finishReading(formData: FormData) {
   const id = String(formData.get("recordId") ?? "");
   const record = await prisma.readingRecord.findUnique({ where: { id } });
   if (!record || record.userId !== user.id || record.deletedAt) redirect("/");
+  await assertStatusChangeAllowed(user.id, record.groupId);
 
   await prisma.readingRecord.update({
     where: { id },

@@ -33,6 +33,7 @@ export function TopBar({
         <Link href="/books/new">✏️ 책 등록</Link>
         <Link href="/shelf">📖 내 책장</Link>
         <Link href="/search">🔍 책 검색</Link>
+        <Link href="/groups/search">👥 그룹 찾기</Link>
         <Link href="/groups/new">🌱 그룹 만들기</Link>
         <Link href="/slots">🎟️ 이용권</Link>
         {current && isAdmin(current.role) && <Link href="/admin/posts">🧹 글 관리</Link>}

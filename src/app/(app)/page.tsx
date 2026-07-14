@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUser, getCurrentMembership } from "@/lib/session";
+import { requireUser, getCurrentMembership, canWriteInGroup, isOwner } from "@/lib/session";
 import { STATUS } from "@/lib/constants";
 import { fmtDate, readingDays } from "@/lib/format";
 import { startReading, finishReading } from "@/lib/actions/record-actions";
+import { leaveGroup } from "@/lib/actions/group-actions";
+import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { getMonthlyDone } from "@/lib/rankings";
 import { Stars } from "@/components/Stars";
 import { RankingSidebar } from "@/components/RankingSidebar";
@@ -12,24 +15,16 @@ import { SubmitButton } from "@/components/SubmitButton";
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ rt?: string; rb?: string; joined?: string }>;
+  searchParams: Promise<{ rt?: string; rb?: string; joined?: string; left?: string; error?: string }>;
 }) {
-  const { rt = "group", rb = "rating", joined } = await searchParams;
+  const { rt = "group", rb = "rating", joined, left, error } = await searchParams;
   const user = await requireUser("/");
   const membership = await getCurrentMembership(user.id);
 
-  if (!membership) {
-    return (
-      <div className="center-page">
-        <div style={{ fontSize: 44 }}>🌱</div>
-        <h1 style={{ fontSize: 22, fontWeight: 900, margin: "6px 0 4px" }}>아직 그룹이 없어요</h1>
-        <p className="mini" style={{ margin: "0 0 18px" }}>
-          그룹을 직접 만들거나, 그룹장에게 초대 링크를 받아 가입해보세요.
-        </p>
-        <Link href="/groups/new" className="btn pri">🌱 나만의 그룹 만들기</Link>
-      </div>
-    );
-  }
+  // 가입한 그룹이 없으면 그룹 검색이 기본 화면
+  if (!membership) redirect("/groups/search?welcome=1");
+
+  const viewOnly = !canWriteInGroup(membership.role, membership.group);
 
   const year = new Date().getFullYear();
   const [myRecords, groupFeed, months] = await Promise.all([
@@ -54,7 +49,14 @@ export default async function HomePage({
 
   return (
     <>
-      {joined && <div className="toast">🎉 『{membership.group.name}』 가입 완료! 첫 책을 등록해보세요.</div>}
+      {joined && <div className="toast">🎉 『{membership.group.name}』 가입 완료! {viewOnly ? "그룹장의 기록을 구경해보세요." : "첫 책을 등록해보세요."}</div>}
+      {left && <div className="toast">그룹에서 나왔어요.</div>}
+      {error && <div className="toast err">{error}</div>}
+      {viewOnly && (
+        <div className="toast" style={{ background: "var(--sun-soft)" }}>
+          👀 이 그룹은 <b>보기 전용</b>이에요 — 기록 등록은 그룹장만 할 수 있어요.
+        </div>
+      )}
       <div className="home-grid">
         <div>
           <div className="board">
@@ -65,10 +67,12 @@ export default async function HomePage({
                 <div className="bcard" key={r.id}>
                   <b><Link href={`/books/${r.id}/edit`}>{r.book.title}</Link></b>
                   <span className="mini">{r.book.author}</span>
-                  <form action={startReading}>
-                    <input type="hidden" name="recordId" value={r.id} />
-                    <SubmitButton pendingText="시작하는 중… 📖">독서 시작!</SubmitButton>
-                  </form>
+                  {!viewOnly && (
+                    <form action={startReading}>
+                      <input type="hidden" name="recordId" value={r.id} />
+                      <SubmitButton pendingText="시작하는 중… 📖">독서 시작!</SubmitButton>
+                    </form>
+                  )}
                 </div>
               ))}
             </section>
@@ -87,10 +91,12 @@ export default async function HomePage({
                       {r.startDate ? ` · ${fmtDate(r.startDate)}부터` : ""}
                       {days ? ` · ${days}일째` : ""}
                     </span>
-                    <form action={finishReading}>
-                      <input type="hidden" name="recordId" value={r.id} />
-                      <SubmitButton pendingText="축하 준비 중… 🎉">다 읽었어요!</SubmitButton>
-                    </form>
+                    {!viewOnly && (
+                      <form action={finishReading}>
+                        <input type="hidden" name="recordId" value={r.id} />
+                        <SubmitButton pendingText="축하 준비 중… 🎉">다 읽었어요!</SubmitButton>
+                      </form>
+                    )}
                   </div>
                 );
               })}
@@ -182,6 +188,18 @@ export default async function HomePage({
               </div>
             )}
           </section>
+
+          {!isOwner(membership.role) && (
+            <form action={leaveGroup} style={{ marginTop: 14, textAlign: "right" }}>
+              <input type="hidden" name="groupId" value={membership.groupId} />
+              <ConfirmSubmit
+                message={`『${membership.group.name}』에서 나갈까요?`}
+                className="btn sm"
+              >
+                🚪 이 그룹에서 나가기
+              </ConfirmSubmit>
+            </form>
+          )}
         </div>
 
         <RankingSidebar groupId={membership.groupId} rt={rt} rb={rb} />

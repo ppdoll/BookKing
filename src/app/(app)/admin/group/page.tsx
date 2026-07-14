@@ -4,17 +4,18 @@ import { prisma } from "@/lib/db";
 import { requireUser, getCurrentMembership, isOwner } from "@/lib/session";
 import { ROLE, ROLE_LABEL, type Role } from "@/lib/constants";
 import { fmtDate, fmtDateFull } from "@/lib/format";
-import { regenerateInvite, setMemberRole, transferOwnership } from "@/lib/actions/group-actions";
+import { regenerateInvite, setMemberRole, transferOwnership, updateGroupOptions, removeMember } from "@/lib/actions/group-actions";
 import { restoreRecord } from "@/lib/actions/record-actions";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { CopyButton } from "@/components/CopyButton";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export default async function AdminGroupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ created?: string; transferred?: string }>;
+  searchParams: Promise<{ created?: string; transferred?: string; options?: string; removed?: string }>;
 }) {
-  const { created, transferred } = await searchParams;
+  const { created, transferred, options, removed } = await searchParams;
   const user = await requireUser("/admin/group");
   const membership = await getCurrentMembership(user.id);
   if (!membership || !isOwner(membership.role)) redirect("/");
@@ -50,6 +51,8 @@ export default async function AdminGroupPage({
       </div>
       {created && <div className="toast">🎉 그룹이 만들어졌어요! 아래 초대 링크를 공유해보세요.</div>}
       {transferred && <div className="toast">👑 그룹장이 위임됐어요. 이제 운영자 권한으로 활동해요.</div>}
+      {options && <div className="toast">⚙️ 그룹 옵션이 저장됐어요.</div>}
+      {removed && <div className="toast">그룹원을 내보냈어요.</div>}
 
       <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16, alignItems: "start" }}>
         <section className="card tablewrap">
@@ -92,6 +95,15 @@ export default async function AdminGroupPage({
                             👑 위임
                           </ConfirmSubmit>
                         </form>
+                        <form action={removeMember} style={{ display: "inline" }}>
+                          <input type="hidden" name="memberId" value={m.id} />
+                          <ConfirmSubmit
+                            message={`${m.user.name}님을 내보낼까요? (기록은 남아요)`}
+                            className="btn sm dngr"
+                          >
+                            내보내기
+                          </ConfirmSubmit>
+                        </form>
                       </span>
                     )}
                   </td>
@@ -102,6 +114,31 @@ export default async function AdminGroupPage({
         </section>
 
         <div style={{ display: "grid", gap: 16 }}>
+          <section className="card">
+            <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>⚙️ 그룹 옵션</h3>
+            <form action={updateGroupOptions}>
+              <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13.5, cursor: "pointer" }}>
+                <input type="checkbox" name="searchable" defaultChecked={group.searchable} style={{ marginTop: 3, width: 16, height: 16 }} />
+                <span>
+                  <b>🔍 외부 검색 허용</b>
+                  <br />
+                  <span className="mini">그룹 찾기에 노출되고, 누구나 바로 가입할 수 있어요. (기록 내용은 가입 후에만 보여요)</span>
+                </span>
+              </label>
+              <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13.5, cursor: "pointer", marginTop: 10 }}>
+                <input type="checkbox" name="readOnly" defaultChecked={group.readOnly} style={{ marginTop: 3, width: 16, height: 16 }} />
+                <span>
+                  <b>👀 보기 전용 (그룹장만 기록)</b>
+                  <br />
+                  <span className="mini">그룹원은 기록을 보기만 해요. 추천 도서 공지용 그룹에 좋아요.</span>
+                </span>
+              </label>
+              <div style={{ marginTop: 12 }}>
+                <SubmitButton className="btn sm pri" pendingText="저장 중…">옵션 저장</SubmitButton>
+              </div>
+            </form>
+          </section>
+
           <section className="card">
             <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>🔗 초대 링크</h3>
             <input className="input" readOnly value={inviteUrl} aria-label="초대 링크" />

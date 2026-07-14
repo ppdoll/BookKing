@@ -96,6 +96,82 @@ export async function setMemberRole(formData: FormData) {
   revalidatePath("/admin/group");
 }
 
+/** (그룹장) 그룹 옵션 변경 — 외부 검색 허용 / 보기 전용 */
+export async function updateGroupOptions(formData: FormData) {
+  const user = await requireUser("/admin/group");
+  const membership = await getCurrentMembership(user.id);
+  if (!membership || !isOwner(membership.role)) redirect("/");
+
+  await prisma.group.update({
+    where: { id: membership.groupId },
+    data: {
+      searchable: formData.get("searchable") === "on",
+      readOnly: formData.get("readOnly") === "on",
+    },
+  });
+  revalidatePath("/admin/group");
+  redirect("/admin/group?options=1");
+}
+
+/** 검색으로 공개 그룹에 가입 (searchable 그룹만) */
+export async function joinPublicGroup(formData: FormData) {
+  const user = await requireUser("/groups/search");
+  const groupId = String(formData.get("groupId") ?? "");
+
+  const group = await prisma.group.findUnique({ where: { id: groupId } });
+  if (!group || !group.searchable) {
+    redirect(`/groups/search?error=${encodeURIComponent("가입할 수 없는 그룹이에요.")}`);
+  }
+
+  await prisma.groupMember.upsert({
+    where: { userId_groupId: { userId: user.id, groupId: group.id } },
+    update: {},
+    create: { userId: user.id, groupId: group.id, role: ROLE.MEMBER },
+  });
+
+  const store = await cookies();
+  store.set(GROUP_COOKIE, group.id, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+  redirect("/?joined=1");
+}
+
+/** (그룹장) 그룹원 내보내기 */
+export async function removeMember(formData: FormData) {
+  const user = await requireUser("/admin/group");
+  const membership = await getCurrentMembership(user.id);
+  if (!membership || !isOwner(membership.role)) redirect("/");
+
+  const memberId = String(formData.get("memberId") ?? "");
+  const target = await prisma.groupMember.findUnique({ where: { id: memberId } });
+  // 같은 그룹 + 그룹장 자신은 내보낼 수 없음
+  if (!target || target.groupId !== membership.groupId || target.role === ROLE.OWNER) {
+    redirect("/admin/group");
+  }
+
+  await prisma.groupMember.delete({ where: { id: memberId } });
+  revalidatePath("/admin/group");
+  redirect("/admin/group?removed=1");
+}
+
+/** 그룹 나가기 (본인, 그룹장은 위임 후 가능) */
+export async function leaveGroup(formData: FormData) {
+  const user = await requireUser("/");
+  const groupId = String(formData.get("groupId") ?? "");
+
+  const membership = await prisma.groupMember.findUnique({
+    where: { userId_groupId: { userId: user.id, groupId } },
+  });
+  if (!membership) redirect("/");
+  if (membership.role === ROLE.OWNER) {
+    redirect(`/?error=${encodeURIComponent("그룹장은 나갈 수 없어요. 먼저 그룹장을 위임해주세요.")}`);
+  }
+
+  await prisma.groupMember.delete({ where: { id: membership.id } });
+  const store = await cookies();
+  store.delete(GROUP_COOKIE);
+  revalidatePath("/", "layout");
+  redirect("/?left=1");
+}
+
 /** 그룹장 위임 — 대상이 그룹장이 되고 본인은 운영자로 */
 export async function transferOwnership(formData: FormData) {
   const user = await requireUser("/admin/group");

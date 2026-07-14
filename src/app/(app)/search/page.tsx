@@ -15,7 +15,7 @@ export default async function SearchPage({
   const { q = "" } = await searchParams;
   const user = await requireUser("/search");
   const membership = await getCurrentMembership(user.id);
-  if (!membership) redirect("/groups/new");
+  if (!membership) redirect("/groups/search");
 
   const query = q.trim();
   const [groupResults, naver] = query

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUser, isAdmin } from "@/lib/session";
+import { requireUser, isAdmin, canWriteInGroup } from "@/lib/session";
 import { toDateInput } from "@/lib/format";
 import { ratingToStars } from "@/lib/constants";
 import { softDeleteRecord } from "@/lib/actions/record-actions";
@@ -26,10 +26,13 @@ export default async function EditBookPage({
 
   const membership = await prisma.groupMember.findUnique({
     where: { userId_groupId: { userId: user.id, groupId: record.groupId } },
+    include: { group: true },
   });
   const mine = record.userId === user.id;
   const canEdit = mine || (membership && isAdmin(membership.role));
   if (!canEdit) redirect("/");
+  // 보기 전용 그룹은 그룹장만 수정 가능
+  if (!membership || !canWriteInGroup(membership.role, membership.group)) redirect(`/records/${record.id}`);
 
   return (
     <>

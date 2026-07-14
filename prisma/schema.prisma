@@ -74,6 +74,8 @@ model Group {
   createdById     String? // 그룹 생성자 (불변 — 이용권 차감 기준, 위임과 무관)
   inviteCode      String   @unique
   inviteExpiresAt DateTime // 발급 + 7일
+  searchable      Boolean  @default(false) // 외부 검색 허용 (검색 노출 + 자유 가입)
+  readOnly        Boolean  @default(false) // 보기 전용 (그룹장만 기록 등록·수정)
   createdAt       DateTime @default(now())
 
   owner     User            @relation("GroupOwner", fields: [ownerId], references: [id])
