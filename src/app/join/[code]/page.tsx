@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
@@ -6,6 +7,29 @@ import { joinGroup } from "@/lib/actions/group-actions";
 import { fmtDateFull } from "@/lib/format";
 import { SubmitButton } from "@/components/SubmitButton";
 import { InAppBrowserGuard } from "@/components/InAppBrowserGuard";
+
+/** 초대 링크 공유 시 카톡/SNS 미리보기에 그룹 이름이 뜨도록 */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ code: string }>;
+}): Promise<Metadata> {
+  const { code } = await params;
+  const group = await prisma.group.findUnique({
+    where: { inviteCode: code },
+    select: { name: true, isPersonal: true },
+  });
+  if (!group || group.isPersonal) return {};
+
+  const title = `『${group.name}』 초대장 — BookKing`;
+  const description = "함께 읽고 기록하는 그룹 독서장, BookKing에서 초대장이 도착했어요! 📚";
+  return {
+    title,
+    description,
+    openGraph: { title, description },
+    twitter: { title, description },
+  };
+}
 
 export default async function JoinPage({
   params,
