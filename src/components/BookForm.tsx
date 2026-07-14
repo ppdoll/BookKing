@@ -25,7 +25,18 @@ export type BookFormInitial = {
   review?: string | null;
 };
 
-export function BookForm({ mode, initial }: { mode: "create" | "edit"; initial: BookFormInitial }) {
+export function BookForm({
+  mode,
+  initial,
+  groups = [],
+  defaultGroupIds = [],
+}: {
+  mode: "create" | "edit";
+  initial: BookFormInitial;
+  /** 등록 가능한 그룹 목록 (create 모드에서 다중 선택) */
+  groups?: { id: string; name: string }[];
+  defaultGroupIds?: string[];
+}) {
   const [title, setTitle] = useState(initial.title ?? "");
   const [author, setAuthor] = useState(initial.author ?? "");
   const [publisher, setPublisher] = useState(initial.publisher ?? "");
@@ -80,6 +91,35 @@ export function BookForm({ mode, initial }: { mode: "create" | "edit"; initial: 
       <input type="hidden" name="link" value={link} />
       <input type="hidden" name="price" value={price ?? ""} />
       <input type="hidden" name="isbn" value={isbn} />
+
+      {mode === "create" && groups.length > 0 && (
+        <>
+          <label className="flabel">
+            등록할 그룹 <span className="req">*</span> <span className="mini">(여러 개 선택 가능)</span>
+          </label>
+          <div className="fieldrow" style={{ gap: 6 }}>
+            {groups.map((g) => (
+              <label
+                key={g.id}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700,
+                  border: "2px solid var(--bd)", borderRadius: 99, padding: "4px 12px",
+                  background: "var(--panel)", cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  name="groupIds"
+                  value={g.id}
+                  defaultChecked={defaultGroupIds.includes(g.id)}
+                  style={{ width: 15, height: 15 }}
+                />
+                {g.name}
+              </label>
+            ))}
+          </div>
+        </>
+      )}
 
       <label className="flabel">
         상태 <span className="req">*</span>

@@ -8,30 +8,37 @@ import { softDeleteRecord } from "@/lib/actions/record-actions";
 import { Stars } from "@/components/Stars";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 
+const PAGE_SIZE = 10;
+
 export default async function AdminPostsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ by?: string; q?: string }>;
+  searchParams: Promise<{ by?: string; q?: string; take?: string }>;
 }) {
-  const { by = "user", q = "" } = await searchParams;
+  const { by = "user", q = "", take: takeRaw } = await searchParams;
   const user = await requireUser("/admin/posts");
   const membership = await getCurrentMembership(user.id);
   if (!membership || !isAdmin(membership.role)) redirect("/");
 
+  const take = Math.min(500, Math.max(PAGE_SIZE, Number(takeRaw) || PAGE_SIZE));
   const query = q.trim();
-  const records = query
-    ? await prisma.readingRecord.findMany({
-        where: {
-          groupId: membership.groupId,
-          ...(by === "title"
-            ? { book: { title: { contains: query } } }
-            : { user: { name: { contains: query } } }),
-        },
-        include: { book: true, user: { select: { name: true } } },
-        orderBy: { updatedAt: "desc" },
-        take: 50,
-      })
-    : [];
+
+  // 검색어가 없으면 그룹 최신 기록, 있으면 필터 — 둘 다 [더 보기]로 계속 추가
+  const fetched = await prisma.readingRecord.findMany({
+    where: {
+      groupId: membership.groupId,
+      ...(query
+        ? by === "title"
+          ? { book: { title: { contains: query } } }
+          : { user: { name: { contains: query } } }
+        : {}),
+    },
+    include: { book: true, user: { select: { name: true } } },
+    orderBy: { updatedAt: "desc" },
+    take: take + 1, // 다음 페이지 존재 여부 확인용
+  });
+  const hasMore = fetched.length > take;
+  const records = fetched.slice(0, take);
 
   // 삭제자 이름 표시용
   const deleterIds = [...new Set(records.map((r) => r.deletedBy).filter((v): v is string => Boolean(v)))];
@@ -56,11 +63,13 @@ export default async function AdminPostsPage({
         <button type="submit" className="btn pri">🔍 검색</button>
       </form>
 
-      {!query ? (
-        <div className="emptybox">사용자 이름이나 책 제목으로 검색하면 그룹의 기록이 나와요.</div>
-      ) : records.length === 0 ? (
-        <div className="emptybox">검색 결과가 없어요.</div>
+      {records.length === 0 ? (
+        <div className="emptybox">{query ? "검색 결과가 없어요." : "아직 그룹에 기록이 없어요."}</div>
       ) : (
+        <>
+        <p className="mini" style={{ margin: "0 0 8px" }}>
+          {query ? `“${query}” 검색 결과` : "그룹 최신 기록"} · {records.length}개 표시 중
+        </p>
         <div className="card tablewrap">
           <table className="mt">
             <thead>
@@ -110,6 +119,17 @@ export default async function AdminPostsPage({
             </tbody>
           </table>
         </div>
+        {hasMore && (
+          <p style={{ marginTop: 12, textAlign: "center" }}>
+            <Link
+              href={`/admin/posts?by=${by}&q=${encodeURIComponent(q)}&take=${take + PAGE_SIZE}`}
+              className="btn"
+            >
+              더 보기 +{PAGE_SIZE}
+            </Link>
+          </p>
+        )}
+        </>
       )}
     </>
   );

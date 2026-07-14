@@ -55,7 +55,11 @@ export default async function ShelfPage({
 
   return (
     <>
-      {created && <div className="toast">📚 책이 등록됐어요!</div>}
+      {created && (
+        <div className="toast">
+          📚 책이 등록됐어요!{Number(created) > 1 ? ` (${created}개 그룹에 등록)` : ""}
+        </div>
+      )}
       {updated && <div className="toast">✅ 기록이 수정됐어요!</div>}
       {error && <div className="toast err">{error}</div>}
       <div className="page-h">

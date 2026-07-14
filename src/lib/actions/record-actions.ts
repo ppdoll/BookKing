@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUser, getCurrentMembership, isAdmin, isOwner, canWriteInGroup } from "@/lib/session";
+import { requireUser, getCurrentMembership, getMemberships, isAdmin, isOwner, canWriteInGroup } from "@/lib/session";
 import { STATUS, starsToRating } from "@/lib/constants";
 
 /** ISBN이 있으면 기존 Book 재사용(랭킹 집계용), 없으면 제목+저자로 매칭 */
@@ -79,13 +79,19 @@ function validateRecord(d: ReturnType<typeof parseRecordForm>): string | null {
   return null;
 }
 
-/** 책 등록 — 현재 선택된 그룹에 기록 생성 */
+/** 책 등록 — 선택한 그룹들에 기록 생성 (다중 선택 가능) */
 export async function createRecord(formData: FormData) {
   const user = await requireUser("/books/new");
-  const membership = await getCurrentMembership(user.id);
-  if (!membership) redirect("/groups/search");
-  if (!canWriteInGroup(membership.role, membership.group)) {
-    redirect(`/books/new?error=${encodeURIComponent("보기 전용 그룹이라 그룹장·운영자만 기록을 등록할 수 있어요.")}`);
+  const memberships = await getMemberships(user.id);
+  if (memberships.length === 0) redirect("/groups/search");
+
+  // 선택된 그룹 중 내가 쓰기 권한이 있는 그룹만 (서버에서 재검증)
+  const selected = formData.getAll("groupIds").map(String);
+  const targets = memberships.filter(
+    (m) => selected.includes(m.groupId) && canWriteInGroup(m.role, m.group)
+  );
+  if (targets.length === 0) {
+    redirect(`/books/new?error=${encodeURIComponent("등록할 그룹을 하나 이상 선택해주세요.")}`);
   }
 
   const d = parseRecordForm(formData);
@@ -93,10 +99,10 @@ export async function createRecord(formData: FormData) {
   if (error) redirect(`/books/new?error=${encodeURIComponent(error)}`);
 
   const book = await upsertBook(d);
-  await prisma.readingRecord.create({
-    data: {
+  await prisma.readingRecord.createMany({
+    data: targets.map((m) => ({
       userId: user.id,
-      groupId: membership.groupId,
+      groupId: m.groupId,
       bookId: book.id,
       status: d.status,
       startDate: d.startDate,
@@ -105,10 +111,10 @@ export async function createRecord(formData: FormData) {
       recommendMbti: d.recommendMbti,
       memorableQuote: d.memorableQuote,
       review: d.review,
-    },
+    })),
   });
   revalidatePath("/");
-  redirect("/shelf?created=1");
+  redirect(`/shelf?created=${targets.length}`);
 }
 
 /** 내 기록 수정 (작성자 본인 또는 운영자/그룹장) */

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { auth, signIn, googleEnabled, devLoginEnabled } from "@/auth";
+import { prisma } from "@/lib/db";
 import { InAppBrowserGuard } from "@/components/InAppBrowserGuard";
 
 export default async function LoginPage({
@@ -11,8 +12,16 @@ export default async function LoginPage({
   const { next: nextRaw, error } = await searchParams;
   const next = nextRaw && nextRaw.startsWith("/") ? nextRaw : "/";
 
+  // 세션이 있어도 실제 유저가 존재할 때만 통과 —
+  // 삭제된 계정의 세션 쿠키가 남아 있으면 / <-> /login 무한 리다이렉트가 되기 때문
   const session = await auth();
-  if (session?.user?.id) redirect(next);
+  if (session?.user?.id) {
+    const exists = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true },
+    });
+    if (exists) redirect(next);
+  }
 
   return (
     <div className="center-page">
