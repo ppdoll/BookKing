@@ -14,6 +14,7 @@ export default async function AdminJoinsPage({
   const user = await requireUser("/admin/joins");
   const membership = await getCurrentMembership(user.id);
   if (!membership || !isAdmin(membership.role)) redirect("/");
+  if (membership.group.isPersonal) redirect("/"); // 개인 책장은 가입 개념이 없음
 
   const [pending, resolved] = await Promise.all([
     prisma.groupJoinRequest.findMany({

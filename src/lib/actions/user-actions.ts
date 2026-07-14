@@ -6,8 +6,9 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireSessionUser } from "@/lib/session";
 import { GROUP_COOKIE } from "@/lib/session";
+import { ensurePersonalGroup } from "@/lib/personal-group";
 
-/** 가입 직후 이름 등록 (필수) */
+/** 가입 직후 이름 등록 (필수) — 완료 시 개인 책장 자동 생성 */
 export async function updateName(formData: FormData) {
   const user = await requireSessionUser();
   const name = String(formData.get("name") ?? "").trim();
@@ -16,6 +17,7 @@ export async function updateName(formData: FormData) {
   if (name.length > 20) redirect(`/welcome?error=long&next=${encodeURIComponent(next)}`);
 
   await prisma.user.update({ where: { id: user.id }, data: { name } });
+  await ensurePersonalGroup(user.id, name);
   redirect(next.startsWith("/") ? next : "/");
 }
 

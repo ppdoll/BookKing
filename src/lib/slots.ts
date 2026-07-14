@@ -10,11 +10,11 @@ export type SlotStatus = {
   available: number;
 };
 
-/** 그룹 생성 이용권 현황 (요청 내 캐시) */
+/** 그룹 생성 이용권 현황 (요청 내 캐시) — 개인 책장(isPersonal)은 차감하지 않음 */
 export const getSlotStatus = cache(async (userId: string): Promise<SlotStatus> => {
   const [granted, used] = await Promise.all([
     prisma.slotGrant.count({ where: { userId } }),
-    prisma.group.count({ where: { createdById: userId } }),
+    prisma.group.count({ where: { createdById: userId, isPersonal: false } }),
   ]);
   const total = BASE_SLOTS + granted;
   return { total, used, available: Math.max(0, total - used) };

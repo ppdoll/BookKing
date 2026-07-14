@@ -27,6 +27,7 @@ export default async function GroupSearchPage({
   const groups = await prisma.group.findMany({
     where: {
       searchable: true,
+      isPersonal: false,
       ...(query ? { name: { contains: query, mode: "insensitive" } } : {}),
     },
     include: {

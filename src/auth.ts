@@ -35,6 +35,8 @@ if (devLoginEnabled) {
         let user = await prisma.user.findUnique({ where: { email } });
         if (!user) {
           user = await prisma.user.create({ data: { email, name: nickname } });
+          const { ensurePersonalGroup } = await import("@/lib/personal-group");
+          await ensurePersonalGroup(user.id, nickname);
         }
         return user;
       },

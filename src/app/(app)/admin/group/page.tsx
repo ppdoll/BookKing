@@ -19,6 +19,7 @@ export default async function AdminGroupPage({
   const user = await requireUser("/admin/group");
   const membership = await getCurrentMembership(user.id);
   if (!membership || !isOwner(membership.role)) redirect("/");
+  if (membership.group.isPersonal) redirect("/"); // 개인 책장은 관리 항목이 없음
 
   // 그룹 정보는 getCurrentMembership이 include로 이미 로드함 — 재조회 불필요
   const group = membership.group;

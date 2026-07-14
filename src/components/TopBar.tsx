@@ -13,7 +13,7 @@ export function TopBar({
   pendingJoins = 0,
 }: {
   user: { id: string; name: string | null };
-  memberships: { groupId: string; role: string; group: { id: string; name: string; joinApproval?: boolean } }[];
+  memberships: { groupId: string; role: string; group: { id: string; name: string; joinApproval?: boolean; isPersonal?: boolean } }[];
   currentGroupId: string | null;
   isSiteAdmin?: boolean;
   pendingRequests?: number;
@@ -38,7 +38,7 @@ export function TopBar({
         <Link href="/groups/search">👥 그룹 찾기</Link>
         <Link href="/groups/new">🌱 그룹 만들기</Link>
         <Link href="/slots">🎟️ 이용권</Link>
-        {current && isAdmin(current.role) && (current.group.joinApproval || pendingJoins > 0) && (
+        {current && !current.group.isPersonal && isAdmin(current.role) && (current.group.joinApproval || pendingJoins > 0) && (
           <Link href="/admin/joins">
             🙋 가입 신청
             {pendingJoins > 0 && (
@@ -53,8 +53,8 @@ export function TopBar({
             )}
           </Link>
         )}
-        {current && isAdmin(current.role) && <Link href="/admin/posts">🧹 글 관리</Link>}
-        {current && isOwner(current.role) && <Link href="/admin/group">👑 그룹 관리</Link>}
+        {current && !current.group.isPersonal && isAdmin(current.role) && <Link href="/admin/posts">🧹 글 관리</Link>}
+        {current && !current.group.isPersonal && isOwner(current.role) && <Link href="/admin/group">👑 그룹 관리</Link>}
         {isSiteAdmin && (
           <Link href="/admin/site">
             🛠 사이트 관리

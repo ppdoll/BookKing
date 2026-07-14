@@ -76,7 +76,7 @@ export async function joinGroup(formData: FormData) {
   const user = await requireUser(`/join/${code}`);
 
   const group = await prisma.group.findUnique({ where: { inviteCode: code } });
-  if (!group) redirect("/join/invalid");
+  if (!group || group.isPersonal) redirect("/join/invalid");
   if (group.inviteExpiresAt < new Date()) redirect(`/join/${code}?expired=1`);
 
   await joinOrApply(user.id, group, `/join/${code}`);
@@ -139,7 +139,7 @@ export async function joinPublicGroup(formData: FormData) {
   const groupId = String(formData.get("groupId") ?? "");
 
   const group = await prisma.group.findUnique({ where: { id: groupId } });
-  if (!group || !group.searchable) {
+  if (!group || !group.searchable || group.isPersonal) {
     redirect(`/groups/search?error=${encodeURIComponent("가입할 수 없는 그룹이에요.")}`);
   }
 

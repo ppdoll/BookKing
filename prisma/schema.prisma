@@ -78,6 +78,7 @@ model Group {
   searchable      Boolean  @default(false) // 외부 검색 허용 (검색 노출)
   readOnly        Boolean  @default(false) // 보기 전용 (그룹장·운영자만 기록 등록·수정)
   joinApproval    Boolean  @default(false) // 가입 승인제 (그룹장·운영자 승인 필요)
+  isPersonal      Boolean  @default(false) // 개인 책장 (가입 시 자동 생성, 1인 전용, 이용권 미차감)
   createdAt       DateTime @default(now())
 
   owner        User               @relation("GroupOwner", fields: [ownerId], references: [id])
