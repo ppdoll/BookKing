@@ -12,10 +12,10 @@ export default async function JoinPage({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ expired?: string }>;
+  searchParams: Promise<{ expired?: string; applied?: string }>;
 }) {
   const { code } = await params;
-  const { expired } = await searchParams;
+  const { expired, applied } = await searchParams;
 
   const group = await prisma.group.findUnique({
     where: { inviteCode: code },
@@ -31,6 +31,12 @@ export default async function JoinPage({
 
   const isExpired = group ? group.inviteExpiresAt < new Date() : false;
   const alreadyMember = Boolean(group && userId && group.members.some((m) => m.userId === userId));
+  const pendingJoin =
+    group && userId
+      ? await prisma.groupJoinRequest.findFirst({
+          where: { groupId: group.id, userId, status: "PENDING" },
+        })
+      : null;
 
   return (
     <div className="center-page">
@@ -71,11 +77,17 @@ export default async function JoinPage({
                 <p className="mini" style={{ margin: "0 0 10px" }}>이미 이 그룹의 멤버예요!</p>
                 <Link href="/" className="btn pri" style={{ width: "100%", justifyContent: "center" }}>홈으로 가기</Link>
               </>
+            ) : applied || pendingJoin ? (
+              <p className="mini" style={{ margin: 0 }}>
+                🙋 <b>가입 신청이 접수됐어요.</b> 그룹장·운영자가 승인하면 자동으로 그룹에 들어가요.
+              </p>
             ) : (
               <form action={joinGroup}>
                 <input type="hidden" name="code" value={code} />
-                <SubmitButton className="btn pri" pendingText="가입하는 중… 🎉">
-                  <span style={{ width: "100%", textAlign: "center" }}>{user?.name}(으)로 가입하기</span>
+                <SubmitButton className="btn pri" pendingText={group.joinApproval ? "신청하는 중…" : "가입하는 중… 🎉"}>
+                  <span style={{ width: "100%", textAlign: "center" }}>
+                    {group.joinApproval ? `${user?.name}(으)로 가입 신청하기` : `${user?.name}(으)로 가입하기`}
+                  </span>
                 </SubmitButton>
               </form>
             )}

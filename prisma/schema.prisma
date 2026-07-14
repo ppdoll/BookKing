@@ -30,6 +30,7 @@ model User {
   slotGrants        SlotGrant[]
   couponRedemptions CouponRedemption[]
   slotRequests      SlotRequest[]
+  joinRequests      GroupJoinRequest[]
 }
 
 model Account {
@@ -74,16 +75,35 @@ model Group {
   createdById     String? // 그룹 생성자 (불변 — 이용권 차감 기준, 위임과 무관)
   inviteCode      String   @unique
   inviteExpiresAt DateTime // 발급 + 7일
-  searchable      Boolean  @default(false) // 외부 검색 허용 (검색 노출 + 자유 가입)
-  readOnly        Boolean  @default(false) // 보기 전용 (그룹장만 기록 등록·수정)
+  searchable      Boolean  @default(false) // 외부 검색 허용 (검색 노출)
+  readOnly        Boolean  @default(false) // 보기 전용 (그룹장·운영자만 기록 등록·수정)
+  joinApproval    Boolean  @default(false) // 가입 승인제 (그룹장·운영자 승인 필요)
   createdAt       DateTime @default(now())
 
-  owner     User            @relation("GroupOwner", fields: [ownerId], references: [id])
-  createdBy User?           @relation("GroupCreator", fields: [createdById], references: [id])
-  members   GroupMember[]
-  records   ReadingRecord[]
+  owner        User               @relation("GroupOwner", fields: [ownerId], references: [id])
+  createdBy    User?              @relation("GroupCreator", fields: [createdById], references: [id])
+  members      GroupMember[]
+  records      ReadingRecord[]
+  joinRequests GroupJoinRequest[]
 
   @@index([createdById])
+}
+
+// 가입 신청 — joinApproval 그룹은 그룹장·운영자 승인 후 가입됨
+model GroupJoinRequest {
+  id         String    @id @default(cuid())
+  groupId    String
+  userId     String
+  status     String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+  resolvedBy String? // 처리한 관리자 id
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId, status])
 }
 
 model GroupMember {

@@ -54,7 +54,7 @@ export default async function HomePage({
       {error && <div className="toast err">{error}</div>}
       {viewOnly && (
         <div className="toast" style={{ background: "var(--sun-soft)" }}>
-          👀 이 그룹은 <b>보기 전용</b>이에요 — 기록 등록은 그룹장만 할 수 있어요.
+          👀 이 그룹은 <b>보기 전용</b>이에요 — 기록 등록은 그룹장·운영자만 할 수 있어요.
         </div>
       )}
       <div className="home-grid">

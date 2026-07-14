@@ -16,9 +16,9 @@ const SORTS = [
 export default async function ShelfPage({
   searchParams,
 }: {
-  searchParams: Promise<{ st?: string; sort?: string; dir?: string; created?: string; updated?: string }>;
+  searchParams: Promise<{ st?: string; sort?: string; dir?: string; created?: string; updated?: string; error?: string }>;
 }) {
-  const { st = "ALL", sort = "date", dir = "desc", created, updated } = await searchParams;
+  const { st = "ALL", sort = "date", dir = "desc", created, updated, error } = await searchParams;
   const user = await requireUser("/shelf");
   const membership = await getCurrentMembership(user.id);
   if (!membership) redirect("/groups/search");
@@ -57,6 +57,7 @@ export default async function ShelfPage({
     <>
       {created && <div className="toast">📚 책이 등록됐어요!</div>}
       {updated && <div className="toast">✅ 기록이 수정됐어요!</div>}
+      {error && <div className="toast err">{error}</div>}
       <div className="page-h">
         <h1>📖 내 책장</h1>
         <span className="mini">『{membership.group.name}』 · {records.length}권</span>

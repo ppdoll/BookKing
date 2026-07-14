@@ -85,7 +85,7 @@ export async function createRecord(formData: FormData) {
   const membership = await getCurrentMembership(user.id);
   if (!membership) redirect("/groups/search");
   if (!canWriteInGroup(membership.role, membership.group)) {
-    redirect(`/books/new?error=${encodeURIComponent("보기 전용 그룹이라 그룹장만 기록을 등록할 수 있어요.")}`);
+    redirect(`/books/new?error=${encodeURIComponent("보기 전용 그룹이라 그룹장·운영자만 기록을 등록할 수 있어요.")}`);
   }
 
   const d = parseRecordForm(formData);
@@ -124,9 +124,9 @@ export async function updateRecord(formData: FormData) {
   });
   const canEdit = record.userId === user.id || (membership && isAdmin(membership.role));
   if (!canEdit) redirect("/");
-  // 보기 전용 그룹은 그룹장만 수정 가능
+  // 보기 전용 그룹은 그룹장·운영자만 수정 가능
   if (!membership || !canWriteInGroup(membership.role, membership.group)) {
-    redirect(`/shelf?error=${encodeURIComponent("보기 전용 그룹이라 그룹장만 수정할 수 있어요.")}`);
+    redirect(`/shelf?error=${encodeURIComponent("보기 전용 그룹이라 그룹장·운영자만 수정할 수 있어요.")}`);
   }
 
   const d = parseRecordForm(formData);

@@ -8,12 +8,20 @@ import { SubmitButton } from "@/components/SubmitButton";
 export default async function GroupSearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; welcome?: string; error?: string }>;
+  searchParams: Promise<{ q?: string; welcome?: string; error?: string; applied?: string }>;
 }) {
-  const { q = "", welcome, error } = await searchParams;
+  const { q = "", welcome, error, applied } = await searchParams;
   const user = await requireUser("/groups/search");
   const memberships = await getMemberships(user.id);
   const myGroupIds = new Set(memberships.map((m) => m.groupId));
+  const myPendingJoins = new Set(
+    (
+      await prisma.groupJoinRequest.findMany({
+        where: { userId: user.id, status: "PENDING" },
+        select: { groupId: true },
+      })
+    ).map((r) => r.groupId)
+  );
 
   const query = q.trim();
   const groups = await prisma.group.findMany({
@@ -37,6 +45,7 @@ export default async function GroupSearchPage({
       </div>
 
       {error && <div className="toast err">{error}</div>}
+      {applied && <div className="toast">🙋 가입 신청이 접수됐어요! 그룹장·운영자가 승인하면 자동으로 그룹에 들어가요.</div>}
       {welcome && (
         <div className="card" style={{ background: "var(--mint-soft)", marginBottom: 16 }}>
           <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>🌱 BookKing에 오신 걸 환영해요!</p>
@@ -67,17 +76,22 @@ export default async function GroupSearchPage({
             <div className="fieldrow" style={{ gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <b style={{ fontSize: 15 }}>{g.name}</b>{" "}
-                {g.readOnly && <span className="pill p-ghost">👀 보기 전용</span>}
+                {g.readOnly && <span className="pill p-ghost">👀 보기 전용</span>}{" "}
+                {g.joinApproval && <span className="pill p-wish">🙋 승인제</span>}
                 <p className="mini" style={{ margin: "3px 0 0" }}>
                   👑 {g.owner.name} · 멤버 {g._count.members}명 · 기록 {g._count.records}개 · {fmtDate(g.createdAt)} 개설
                 </p>
               </div>
               {myGroupIds.has(g.id) ? (
                 <span className="pill p-read">가입됨 ✅</span>
+              ) : myPendingJoins.has(g.id) ? (
+                <span className="pill p-wish">⏳ 승인 대기 중</span>
               ) : (
                 <form action={joinPublicGroup}>
                   <input type="hidden" name="groupId" value={g.id} />
-                  <SubmitButton className="btn pri" pendingText="가입 중…">가입하기</SubmitButton>
+                  <SubmitButton className="btn pri" pendingText={g.joinApproval ? "신청 중…" : "가입 중…"}>
+                    {g.joinApproval ? "가입 신청" : "가입하기"}
+                  </SubmitButton>
                 </form>
               )}
             </div>

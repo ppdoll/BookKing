@@ -128,9 +128,17 @@ export default async function AdminGroupPage({
               <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13.5, cursor: "pointer", marginTop: 10 }}>
                 <input type="checkbox" name="readOnly" defaultChecked={group.readOnly} style={{ marginTop: 3, width: 16, height: 16 }} />
                 <span>
-                  <b>👀 보기 전용 (그룹장만 기록)</b>
+                  <b>👀 보기 전용 (그룹장·운영자만 기록)</b>
                   <br />
-                  <span className="mini">그룹원은 기록을 보기만 해요. 추천 도서 공지용 그룹에 좋아요.</span>
+                  <span className="mini">일반 그룹원은 기록을 보기만 해요. 추천 도서 공지용 그룹에 좋아요.</span>
+                </span>
+              </label>
+              <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13.5, cursor: "pointer", marginTop: 10 }}>
+                <input type="checkbox" name="joinApproval" defaultChecked={group.joinApproval} style={{ marginTop: 3, width: 16, height: 16 }} />
+                <span>
+                  <b>🙋 가입 승인제</b>
+                  <br />
+                  <span className="mini">초대 링크·검색 어느 쪽이든 그룹장·운영자가 승인해야 가입돼요.</span>
                 </span>
               </label>
               <div style={{ marginTop: 12 }}>
