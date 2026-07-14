@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUser, GROUP_COOKIE, getCurrentMembership, isOwner } from "@/lib/session";
 import { ROLE, INVITE_EXPIRY_DAYS } from "@/lib/constants";
+import { getSlotStatus } from "@/lib/slots";
 
 function newInviteCode() {
   return randomBytes(6).toString("base64url"); // 8자, URL 안전
@@ -16,17 +17,21 @@ function inviteExpiry() {
   return new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
 }
 
-/** 그룹 생성 — 만든 사람이 그룹장 */
+/** 그룹 생성 — 만든 사람이 그룹장, 이용권(슬롯) 1개 사용 */
 export async function createGroup(formData: FormData) {
   const user = await requireUser("/groups/new");
   const name = String(formData.get("name") ?? "").trim();
   if (!name) redirect("/groups/new?error=empty");
   if (name.length > 30) redirect("/groups/new?error=long");
 
+  const slots = await getSlotStatus(user.id);
+  if (slots.available <= 0) redirect("/groups/new?error=noslot");
+
   const group = await prisma.group.create({
     data: {
       name,
       ownerId: user.id,
+      createdById: user.id, // 이용권 차감 기준 (불변)
       inviteCode: newInviteCode(),
       inviteExpiresAt: inviteExpiry(),
       members: { create: { userId: user.id, role: ROLE.OWNER } },

@@ -18,13 +18,18 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  isSiteAdmin   Boolean   @default(false) // 최고 운영자 (쿠폰 발급·요청 처리)
   createdAt     DateTime  @default(now())
 
-  accounts    Account[]
-  sessions    Session[]
-  memberships GroupMember[]
-  records     ReadingRecord[]
-  ownedGroups Group[]         @relation("GroupOwner")
+  accounts          Account[]
+  sessions          Session[]
+  memberships       GroupMember[]
+  records           ReadingRecord[]
+  ownedGroups       Group[]            @relation("GroupOwner")
+  createdGroups     Group[]            @relation("GroupCreator")
+  slotGrants        SlotGrant[]
+  couponRedemptions CouponRedemption[]
+  slotRequests      SlotRequest[]
 }
 
 model Account {
@@ -66,13 +71,17 @@ model Group {
   id              String   @id @default(cuid())
   name            String
   ownerId         String
+  createdById     String? // 그룹 생성자 (불변 — 이용권 차감 기준, 위임과 무관)
   inviteCode      String   @unique
   inviteExpiresAt DateTime // 발급 + 7일
   createdAt       DateTime @default(now())
 
-  owner   User            @relation("GroupOwner", fields: [ownerId], references: [id])
-  members GroupMember[]
-  records ReadingRecord[]
+  owner     User            @relation("GroupOwner", fields: [ownerId], references: [id])
+  createdBy User?           @relation("GroupCreator", fields: [createdById], references: [id])
+  members   GroupMember[]
+  records   ReadingRecord[]
+
+  @@index([createdById])
 }
 
 model GroupMember {
@@ -128,4 +137,67 @@ model ReadingRecord {
   @@index([groupId, status, deletedAt])
   @@index([userId, groupId])
   @@index([status, deletedAt]) // 통합 랭킹(그룹 필터 없음) 집계용
+}
+
+// ── 그룹 생성 이용권(슬롯) 시스템 ──────────────────
+// 모든 유저는 기본 1개 + SlotGrant 수만큼 그룹 생성 가능.
+// 사용량은 "생성한 그룹 수"(Group.createdById) 기준 — 위임해도 반환되지 않음.
+
+// 지급된 이용권 (1행 = 1슬롯)
+model SlotGrant {
+  id        String   @id @default(cuid())
+  userId    String
+  source    String // COUPON | ADMIN | BACKFILL (| 추후 PURCHASE)
+  couponId  String?
+  note      String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Coupon {
+  id         String    @id @default(cuid())
+  code       String    @unique
+  slotAmount Int       @default(1) // 1회 사용 시 지급되는 슬롯 수
+  maxUses    Int       @default(1) // 총 사용 가능 횟수
+  usedCount  Int       @default(0)
+  expiresAt  DateTime?
+  note       String? // 관리자 메모 (발급 대상 등)
+  createdAt  DateTime  @default(now())
+
+  redemptions  CouponRedemption[]
+  slotRequests SlotRequest[]
+}
+
+model CouponRedemption {
+  id        String   @id @default(cuid())
+  couponId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, userId]) // 1인 1회
+}
+
+// 이용권 요청 — 사용자가 신청하면 사이트 관리자가 쿠폰을 발급해 승인
+model SlotRequest {
+  id             String    @id @default(cuid())
+  userId         String
+  requestedSlots Int       @default(1)
+  message        String?
+  status         String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  adminNote      String?
+  couponId       String? // 승인 시 발급된 쿠폰
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coupon Coupon? @relation(fields: [couponId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([userId])
 }
