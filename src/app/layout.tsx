@@ -1,5 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 const SITE_URL = "https://book-king-two.vercel.app";
 const TITLE = "BookKing — 함께 읽는 그룹 독서장";
@@ -23,12 +25,28 @@ export const metadata: Metadata = {
     title: TITLE,
     description: DESCRIPTION,
   },
+  // 홈 화면에 추가 시 앱처럼(전체화면) 실행 + iOS 아이콘/제목
+  appleWebApp: {
+    capable: true,
+    title: "BookKing",
+    statusBarStyle: "default",
+  },
+  // 구형 iOS(16.3 이하) 호환용 — 홈 화면 실행 시 전체화면 유지
+  other: { "apple-mobile-web-app-capable": "yes" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#FF8A5C",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        {children}
+        <ServiceWorkerRegister />
+        <InstallPrompt />
+      </body>
     </html>
   );
 }
