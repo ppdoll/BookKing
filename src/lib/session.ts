@@ -24,6 +24,7 @@ export async function requireUser(nextPath?: string) {
   if (!user) {
     redirect(`/login${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""}`);
   }
+  if (user.suspendedAt) redirect("/suspended"); // 정지 계정은 모든 기능 차단
   if (!user.name) {
     redirect(`/welcome${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""}`);
   }

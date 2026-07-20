@@ -126,6 +126,44 @@ export async function rejectRequest(formData: FormData) {
   redirect("/admin/site?rejected=1");
 }
 
+/** (사이트 관리자) 계정 정지 — 본인·다른 관리자는 불가 */
+export async function suspendUser(formData: FormData) {
+  const admin = await requireUser("/admin/site");
+  if (!isSiteAdminUser(admin)) redirect("/");
+
+  const userId = String(formData.get("userId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 300) || null;
+
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target || target.suspendedAt) err("/admin/site", "이미 처리됐거나 없는 계정이에요.");
+  if (target.id === admin.id) err("/admin/site", "본인 계정은 정지할 수 없어요.");
+  if (isSiteAdminUser(target)) err("/admin/site", "사이트 관리자 계정은 정지할 수 없어요.");
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { suspendedAt: new Date(), suspendedReason: reason },
+  });
+  revalidatePath("/admin/site");
+  redirect("/admin/site?suspended=1");
+}
+
+/** (사이트 관리자) 정지 해제 */
+export async function unsuspendUser(formData: FormData) {
+  const admin = await requireUser("/admin/site");
+  if (!isSiteAdminUser(admin)) redirect("/");
+
+  const userId = String(formData.get("userId") ?? "");
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target || !target.suspendedAt) err("/admin/site", "정지 상태가 아닌 계정이에요.");
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { suspendedAt: null, suspendedReason: null },
+  });
+  revalidatePath("/admin/site");
+  redirect("/admin/site?unsuspended=1");
+}
+
 /** (사이트 관리자) 쿠폰 직접 생성 */
 export async function createCoupon(formData: FormData) {
   const admin = await requireUser("/admin/site");

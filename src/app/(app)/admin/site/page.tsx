@@ -3,18 +3,48 @@ import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { isSiteAdminUser } from "@/lib/slots";
 import { fmtDateFull } from "@/lib/format";
-import { approveRequest, rejectRequest, createCoupon } from "@/lib/actions/slot-actions";
+import Link from "next/link";
+import { approveRequest, rejectRequest, createCoupon, suspendUser, unsuspendUser } from "@/lib/actions/slot-actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { CopyButton } from "@/components/CopyButton";
+import { ConfirmSubmit } from "@/components/ConfirmSubmit";
+
+const USER_PAGE = 20;
 
 export default async function SiteAdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; approved?: string; rejected?: string; created?: string }>;
+  searchParams: Promise<{
+    error?: string; approved?: string; rejected?: string; created?: string;
+    suspended?: string; unsuspended?: string; uq?: string; utake?: string;
+  }>;
 }) {
-  const { error, approved, rejected, created } = await searchParams;
+  const { error, approved, rejected, created, suspended, unsuspended, uq = "", utake: utakeRaw } = await searchParams;
   const user = await requireUser("/admin/site");
   if (!isSiteAdminUser(user)) redirect("/");
+
+  const utake = Math.min(500, Math.max(USER_PAGE, Number(utakeRaw) || USER_PAGE));
+  const userQuery = uq.trim();
+
+  const fetchedUsers = await prisma.user.findMany({
+    where: userQuery
+      ? {
+          OR: [
+            { name: { contains: userQuery, mode: "insensitive" } },
+            { email: { contains: userQuery, mode: "insensitive" } },
+          ],
+        }
+      : {},
+    orderBy: { createdAt: "desc" },
+    take: utake + 1,
+    include: {
+      _count: {
+        select: { memberships: true, records: { where: { deletedAt: null } } },
+      },
+    },
+  });
+  const hasMoreUsers = fetchedUsers.length > utake;
+  const users = fetchedUsers.slice(0, utake);
 
   const [pending, resolved, coupons] = await Promise.all([
     prisma.slotRequest.findMany({
@@ -46,6 +76,81 @@ export default async function SiteAdminPage({
       {approved && <div className="toast">✅ 요청을 승인하고 쿠폰을 발급했어요. 요청자의 이용권 페이지에 표시돼요.</div>}
       {rejected && <div className="toast">요청을 거절 처리했어요.</div>}
       {created && <div className="toast">🎫 쿠폰이 만들어졌어요: <b style={{ fontFamily: "monospace" }}>{created}</b></div>}
+      {suspended && <div className="toast">🚫 계정을 정지했어요. 해당 유저는 로그인해도 안내 페이지만 보게 돼요.</div>}
+      {unsuspended && <div className="toast">✅ 정지를 해제했어요. 바로 정상 이용이 가능해요.</div>}
+
+      <section className="card" style={{ marginBottom: 16 }}>
+        <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>
+          👥 가입 유저 <span className="mini">{userQuery ? `“${userQuery}” 검색` : "최신순"} · {users.length}명 표시 중</span>
+        </h3>
+        <form method="GET" action="/admin/site" className="fieldrow" style={{ marginBottom: 12 }}>
+          <input className="input" name="uq" defaultValue={uq} placeholder="이름 또는 이메일 검색" style={{ flex: 1, maxWidth: 280 }} />
+          <button type="submit" className="btn sm pri">🔍 검색</button>
+          {userQuery && <Link href="/admin/site" className="btn sm">전체 보기</Link>}
+        </form>
+        {users.length === 0 ? (
+          <p className="mini" style={{ margin: 0 }}>검색 결과가 없어요.</p>
+        ) : (
+          <div className="tablewrap">
+            <table className="mt">
+              <thead>
+                <tr><th>이름</th><th>이메일</th><th>가입일</th><th>그룹</th><th>기록</th><th>상태</th><th style={{ width: 260 }}>제재</th></tr>
+              </thead>
+              <tbody>
+                {users.map((u) => {
+                  const isAdminUser = isSiteAdminUser(u);
+                  return (
+                    <tr key={u.id} style={u.suspendedAt ? { opacity: 0.65 } : undefined}>
+                      <td><b>{u.name ?? "(이름 미등록)"}</b>{u.id === user.id ? " (나)" : ""}</td>
+                      <td className="mini">{u.email}</td>
+                      <td className="mini num">{fmtDateFull(u.createdAt)}</td>
+                      <td className="num">{u._count.memberships}</td>
+                      <td className="num">{u._count.records}</td>
+                      <td>
+                        {isAdminUser ? (
+                          <span className="pill p-done">🛠 관리자</span>
+                        ) : u.suspendedAt ? (
+                          <span className="pill p-ghost">🚫 정지됨</span>
+                        ) : (
+                          <span className="pill p-read">정상</span>
+                        )}
+                      </td>
+                      <td>
+                        {isAdminUser ? (
+                          <span className="mini">—</span>
+                        ) : u.suspendedAt ? (
+                          <span className="fieldrow" style={{ gap: 6 }}>
+                            <span className="mini">{u.suspendedReason ?? "사유 없음"}</span>
+                            <form action={unsuspendUser} style={{ display: "inline" }}>
+                              <input type="hidden" name="userId" value={u.id} />
+                              <SubmitButton className="btn sm" pendingText="해제 중…">해제</SubmitButton>
+                            </form>
+                          </span>
+                        ) : (
+                          <form action={suspendUser} className="fieldrow" style={{ gap: 6 }}>
+                            <input type="hidden" name="userId" value={u.id} />
+                            <input className="input" name="reason" placeholder="정지 사유 (유저에게 보임)" style={{ width: 160, padding: "3px 10px", fontSize: 12.5 }} />
+                            <ConfirmSubmit message={`${u.name ?? u.email}님을 정지할까요?`} className="btn sm dngr">
+                              🚫 정지
+                            </ConfirmSubmit>
+                          </form>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {hasMoreUsers && (
+          <p style={{ marginTop: 10, textAlign: "center" }}>
+            <Link href={`/admin/site?uq=${encodeURIComponent(uq)}&utake=${utake + USER_PAGE}`} className="btn sm">
+              더 보기 +{USER_PAGE}
+            </Link>
+          </p>
+        )}
+      </section>
 
       <section className="card" style={{ marginBottom: 16 }}>
         <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>
