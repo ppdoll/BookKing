@@ -6,8 +6,7 @@ import { prisma } from "@/lib/db";
  * 없으면 일반 검색/상품 링크로 동작한다 (버튼은 항상 유효).
  *
  * - 쿠팡: 쿠팡 파트너스 lptag 파라미터
- * - 예스24·교보문고: 링크프라이스(LinkPrice) 딥링크 경유
- * - 알라딘: 제휴 프로그램(TTB)이 2022-09 종료되어 일반 링크만 제공 (ISBN 직링크)
+ * - 예스24(m=yes24)·교보문고(m=kbbook): 링크프라이스(LinkPrice) 딥링크 경유
  */
 
 export const AFF_KEYS = {
@@ -41,23 +40,15 @@ export function buildStoreLinks(
   cfg: AffiliateConfig
 ): StoreLink[] {
   const q = encodeURIComponent(book.title);
-  // 네이버 API의 isbn은 간혹 "10자리 13자리" 두 값 — 마지막(13자리) 사용
-  const isbn = book.isbn?.trim().split(/\s+/).pop() ?? null;
 
   const coupangUrl =
     `https://www.coupang.com/np/search?q=${q}` + (cfg.coupang ? `&lptag=${encodeURIComponent(cfg.coupang)}` : "");
-
-  // 알라딘은 제휴 프로그램이 없어 일반 링크 (ISBN이 있으면 상품 직링크)
-  const aladinUrl = isbn
-    ? `https://www.aladin.co.kr/shop/wproduct.aspx?ISBN=${encodeURIComponent(isbn)}`
-    : `https://www.aladin.co.kr/search/wsearchresult.aspx?SearchTarget=Book&SearchWord=${q}`;
 
   const yes24Plain = `https://www.yes24.com/product/search?domain=BOOK&query=${q}`;
   const kyoboPlain = `https://search.kyobobook.co.kr/search?keyword=${q}&gbCode=TOT&target=total`;
 
   return [
     { store: "쿠팡", url: coupangUrl, affiliate: Boolean(cfg.coupang) },
-    { store: "알라딘", url: aladinUrl, affiliate: false },
     {
       store: "예스24",
       url: cfg.linkprice ? linkprice("yes24", cfg.linkprice, yes24Plain) : yes24Plain,
@@ -65,7 +56,7 @@ export function buildStoreLinks(
     },
     {
       store: "교보문고",
-      url: cfg.linkprice ? linkprice("kyobobook", cfg.linkprice, kyoboPlain) : kyoboPlain,
+      url: cfg.linkprice ? linkprice("kbbook", cfg.linkprice, kyoboPlain) : kyoboPlain,
       affiliate: Boolean(cfg.linkprice),
     },
   ];

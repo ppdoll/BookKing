@@ -228,7 +228,6 @@ export default async function SiteAdminPage({
         <p className="mini" style={{ margin: "0 0 12px" }}>
           ID를 입력하면 기록 상세·책 검색의 서점 링크(쿠팡·예스24·교보)가 제휴 링크로 바뀌어요.
           비워두면 일반 링크로 동작해요. 쿠팡 ID 설정 시 파트너스 필수 고지 문구가 자동 표시됩니다.
-          (알라딘은 제휴 프로그램이 2022년 종료되어 일반 링크로만 제공돼요)
         </p>
         <form action={saveAffiliateConfig}>
           <div className="fieldrow" style={{ gap: 10 }}>
