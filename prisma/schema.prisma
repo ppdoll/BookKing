@@ -92,6 +92,13 @@ model Group {
   @@index([createdById])
 }
 
+// 사이트 전역 설정 (제휴 ID 등) — 사이트 관리자가 UI에서 수정
+model SiteConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 // 가입 신청 — joinApproval 그룹은 그룹장·운영자 승인 후 가입됨
 model GroupJoinRequest {
   id         String    @id @default(cuid())

@@ -6,6 +6,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { isSiteAdminUser, newCouponCode } from "@/lib/slots";
+import { AFF_KEYS } from "@/lib/affiliate";
 
 function err(path: string, message: string): never {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
@@ -124,6 +125,27 @@ export async function rejectRequest(formData: FormData) {
   revalidatePath("/admin/site");
   revalidatePath("/slots");
   redirect("/admin/site?rejected=1");
+}
+
+/** (사이트 관리자) 서점 제휴 ID 저장 — 비우면 일반 링크로 동작 */
+export async function saveAffiliateConfig(formData: FormData) {
+  const admin = await requireUser("/admin/site");
+  if (!isSiteAdminUser(admin)) redirect("/");
+
+  const entries: Array<[string, string]> = [
+    [AFF_KEYS.coupang, String(formData.get("coupang") ?? "").trim().slice(0, 100)],
+    [AFF_KEYS.aladin, String(formData.get("aladin") ?? "").trim().slice(0, 100)],
+    [AFF_KEYS.linkprice, String(formData.get("linkprice") ?? "").trim().slice(0, 100)],
+  ];
+  for (const [key, value] of entries) {
+    await prisma.siteConfig.upsert({
+      where: { key },
+      update: { value },
+      create: { key, value },
+    });
+  }
+  revalidatePath("/admin/site");
+  redirect("/admin/site?affsaved=1");
 }
 
 /** (사이트 관리자) 계정 정지 — 본인·다른 관리자는 불가 */

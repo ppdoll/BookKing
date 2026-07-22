@@ -4,7 +4,8 @@ import { requireUser } from "@/lib/session";
 import { isSiteAdminUser } from "@/lib/slots";
 import { fmtDateFull } from "@/lib/format";
 import Link from "next/link";
-import { approveRequest, rejectRequest, createCoupon, suspendUser, unsuspendUser } from "@/lib/actions/slot-actions";
+import { approveRequest, rejectRequest, createCoupon, suspendUser, unsuspendUser, saveAffiliateConfig } from "@/lib/actions/slot-actions";
+import { getAffiliateConfig } from "@/lib/affiliate";
 import { SubmitButton } from "@/components/SubmitButton";
 import { CopyButton } from "@/components/CopyButton";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
@@ -16,10 +17,10 @@ export default async function SiteAdminPage({
 }: {
   searchParams: Promise<{
     error?: string; approved?: string; rejected?: string; created?: string;
-    suspended?: string; unsuspended?: string; uq?: string; utake?: string;
+    suspended?: string; unsuspended?: string; uq?: string; utake?: string; affsaved?: string;
   }>;
 }) {
-  const { error, approved, rejected, created, suspended, unsuspended, uq = "", utake: utakeRaw } = await searchParams;
+  const { error, approved, rejected, created, suspended, unsuspended, uq = "", utake: utakeRaw, affsaved } = await searchParams;
   const user = await requireUser("/admin/site");
   if (!isSiteAdminUser(user)) redirect("/");
 
@@ -46,6 +47,7 @@ export default async function SiteAdminPage({
   const hasMoreUsers = fetchedUsers.length > utake;
   const users = fetchedUsers.slice(0, utake);
 
+  const aff = await getAffiliateConfig();
   const [pending, resolved, coupons] = await Promise.all([
     prisma.slotRequest.findMany({
       where: { status: "PENDING" },
@@ -78,6 +80,7 @@ export default async function SiteAdminPage({
       {created && <div className="toast">🎫 쿠폰이 만들어졌어요: <b style={{ fontFamily: "monospace" }}>{created}</b></div>}
       {suspended && <div className="toast">🚫 계정을 정지했어요. 해당 유저는 로그인해도 안내 페이지만 보게 돼요.</div>}
       {unsuspended && <div className="toast">✅ 정지를 해제했어요. 바로 정상 이용이 가능해요.</div>}
+      {affsaved && <div className="toast">💰 제휴 설정이 저장됐어요. 서점 링크에 바로 반영됩니다.</div>}
 
       <section className="card" style={{ marginBottom: 16 }}>
         <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>
@@ -218,6 +221,34 @@ export default async function SiteAdminPage({
         <p className="mini" style={{ margin: "8px 0 0" }}>
           💡 현금 결제는 송금을 확인한 뒤 여기서 쿠폰을 만들어 카톡으로 코드를 보내주면 돼요.
         </p>
+      </section>
+
+      <section className="card" style={{ marginBottom: 16 }}>
+        <h3 style={{ margin: "0 0 6px", fontSize: 15 }}>💰 서점 제휴 설정</h3>
+        <p className="mini" style={{ margin: "0 0 12px" }}>
+          ID를 입력하면 기록 상세·책 검색의 서점 링크(쿠팡·알라딘·예스24·교보)가 제휴 링크로 바뀌어요.
+          비워두면 일반 링크로 동작해요. 쿠팡 ID 설정 시 파트너스 필수 고지 문구가 자동 표시됩니다.
+        </p>
+        <form action={saveAffiliateConfig}>
+          <div className="fieldrow" style={{ gap: 10 }}>
+            <label className="mini" style={{ fontWeight: 800, width: 130 }}>쿠팡 파트너스 ID</label>
+            <input className="input" name="coupang" defaultValue={aff.coupang} placeholder="예: AF1234567" style={{ width: 200 }} />
+            <a href="https://partners.coupang.com" target="_blank" rel="noreferrer" className="mini" style={{ textDecoration: "underline" }}>가입 ↗</a>
+          </div>
+          <div className="fieldrow" style={{ gap: 10, marginTop: 8 }}>
+            <label className="mini" style={{ fontWeight: 800, width: 130 }}>알라딘 TTB ID</label>
+            <input className="input" name="aladin" defaultValue={aff.aladin} placeholder="예: myttbid1234" style={{ width: 200 }} />
+            <a href="https://www.aladin.co.kr/ttb/wintro.aspx" target="_blank" rel="noreferrer" className="mini" style={{ textDecoration: "underline" }}>가입 ↗</a>
+          </div>
+          <div className="fieldrow" style={{ gap: 10, marginTop: 8 }}>
+            <label className="mini" style={{ fontWeight: 800, width: 130 }}>링크프라이스 ID</label>
+            <input className="input" name="linkprice" defaultValue={aff.linkprice} placeholder="예스24·교보문고 공용 (예: A100123456)" style={{ width: 260 }} />
+            <a href="https://www.linkprice.com" target="_blank" rel="noreferrer" className="mini" style={{ textDecoration: "underline" }}>가입 ↗</a>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <SubmitButton className="btn sm pri" pendingText="저장 중…">제휴 설정 저장</SubmitButton>
+          </div>
+        </form>
       </section>
 
       <section className="card tablewrap">

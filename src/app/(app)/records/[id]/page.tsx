@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/session";
 import { STATUS_LABEL, type Status, MBTI_ALL } from "@/lib/constants";
 import { fmtDateFull, readingDays } from "@/lib/format";
 import { Stars } from "@/components/Stars";
+import { StoreLinks } from "@/components/StoreLinks";
 
 export default async function RecordDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -63,6 +64,8 @@ export default async function RecordDetailPage({ params }: { params: Promise<{ i
             )}
           </div>
         </div>
+
+        <StoreLinks title={record.book.title} isbn={record.book.isbn} />
 
         {mbti && mbti.length > 0 && (
           <>

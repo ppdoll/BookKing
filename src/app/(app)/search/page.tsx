@@ -6,6 +6,7 @@ import { STATUS, STATUS_LABEL, type Status } from "@/lib/constants";
 import { fmtDate } from "@/lib/format";
 import { searchNaverBooks } from "@/lib/naver";
 import { Stars } from "@/components/Stars";
+import { StoreLinks } from "@/components/StoreLinks";
 
 export default async function SearchPage({
   searchParams,
@@ -126,10 +127,14 @@ export default async function SearchPage({
                       </>
                     )}
                   </span>
+                  <StoreLinks title={b.title} isbn={b.isbn} compact />
                 </div>
                 <Link href={registerHref(b)} className="btn sm pri">내 책장에 등록</Link>
               </div>
             ))}
+            <p className="mini" style={{ margin: "8px 0 0", fontSize: 11.5 }}>
+              서점 링크로 구매 시 운영자가 제휴 수수료를 받을 수 있어요.
+            </p>
           </section>
         </>
       )}
