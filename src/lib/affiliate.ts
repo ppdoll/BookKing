@@ -40,19 +40,24 @@ export function buildStoreLinks(
   cfg: AffiliateConfig
 ): StoreLink[] {
   const q = encodeURIComponent(book.title);
+  // 네이버 API의 isbn은 간혹 "10자리 13자리" 두 값 — 마지막(13자리) 사용
+  const isbn = book.isbn?.trim().split(/\s+/).pop() || null;
+  // 예스24 제휴 게이트웨이가 한글 쿼리를 깨뜨리므로, ISBN(숫자)이 있으면 ISBN으로 검색
+  const sq = isbn ? encodeURIComponent(isbn) : q;
 
   const coupangUrl =
     `https://www.coupang.com/np/search?q=${q}` + (cfg.coupang ? `&lptag=${encodeURIComponent(cfg.coupang)}` : "");
 
-  const yes24Plain = `https://www.yes24.com/product/search?domain=BOOK&query=${q}`;
-  const kyoboPlain = `https://search.kyobobook.co.kr/search?keyword=${q}&gbCode=TOT&target=total`;
+  const yes24Plain = `https://www.yes24.com/product/search?domain=BOOK&query=${sq}`;
+  const kyoboPlain = `https://search.kyobobook.co.kr/search?keyword=${sq}&gbCode=TOT&target=total`;
 
   return [
     { store: "쿠팡", url: coupangUrl, affiliate: Boolean(cfg.coupang) },
     {
+      // ISBN이 없는 책(직접 입력)은 게이트웨이에서 한글이 깨져 제휴를 포기하고 직링크
       store: "예스24",
-      url: cfg.linkprice ? linkprice("yes24", cfg.linkprice, yes24Plain) : yes24Plain,
-      affiliate: Boolean(cfg.linkprice),
+      url: cfg.linkprice && isbn ? linkprice("yes24", cfg.linkprice, yes24Plain) : yes24Plain,
+      affiliate: Boolean(cfg.linkprice && isbn),
     },
     {
       store: "교보문고",
