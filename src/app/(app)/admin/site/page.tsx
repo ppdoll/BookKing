@@ -226,19 +226,15 @@ export default async function SiteAdminPage({
       <section className="card" style={{ marginBottom: 16 }}>
         <h3 style={{ margin: "0 0 6px", fontSize: 15 }}>💰 서점 제휴 설정</h3>
         <p className="mini" style={{ margin: "0 0 12px" }}>
-          ID를 입력하면 기록 상세·책 검색의 서점 링크(쿠팡·알라딘·예스24·교보)가 제휴 링크로 바뀌어요.
+          ID를 입력하면 기록 상세·책 검색의 서점 링크(쿠팡·예스24·교보)가 제휴 링크로 바뀌어요.
           비워두면 일반 링크로 동작해요. 쿠팡 ID 설정 시 파트너스 필수 고지 문구가 자동 표시됩니다.
+          (알라딘은 제휴 프로그램이 2022년 종료되어 일반 링크로만 제공돼요)
         </p>
         <form action={saveAffiliateConfig}>
           <div className="fieldrow" style={{ gap: 10 }}>
             <label className="mini" style={{ fontWeight: 800, width: 130 }}>쿠팡 파트너스 ID</label>
             <input className="input" name="coupang" defaultValue={aff.coupang} placeholder="예: AF1234567" style={{ width: 200 }} />
             <a href="https://partners.coupang.com" target="_blank" rel="noreferrer" className="mini" style={{ textDecoration: "underline" }}>가입 ↗</a>
-          </div>
-          <div className="fieldrow" style={{ gap: 10, marginTop: 8 }}>
-            <label className="mini" style={{ fontWeight: 800, width: 130 }}>알라딘 TTB ID</label>
-            <input className="input" name="aladin" defaultValue={aff.aladin} placeholder="예: myttbid1234" style={{ width: 200 }} />
-            <a href="https://www.aladin.co.kr/ttb/wintro.aspx" target="_blank" rel="noreferrer" className="mini" style={{ textDecoration: "underline" }}>가입 ↗</a>
           </div>
           <div className="fieldrow" style={{ gap: 10, marginTop: 8 }}>
             <label className="mini" style={{ fontWeight: 800, width: 130 }}>링크프라이스 ID</label>

@@ -134,7 +134,6 @@ export async function saveAffiliateConfig(formData: FormData) {
 
   const entries: Array<[string, string]> = [
     [AFF_KEYS.coupang, String(formData.get("coupang") ?? "").trim().slice(0, 100)],
-    [AFF_KEYS.aladin, String(formData.get("aladin") ?? "").trim().slice(0, 100)],
     [AFF_KEYS.linkprice, String(formData.get("linkprice") ?? "").trim().slice(0, 100)],
   ];
   for (const [key, value] of entries) {
