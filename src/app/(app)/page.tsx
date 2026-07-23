@@ -8,8 +8,10 @@ import { startReading, finishReading } from "@/lib/actions/record-actions";
 import { leaveGroup } from "@/lib/actions/group-actions";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { getMonthlyDone } from "@/lib/rankings";
+import { getGroupSharedCards, getWrappedStats } from "@/lib/wrapped";
 import { Stars } from "@/components/Stars";
 import { RankingSidebar } from "@/components/RankingSidebar";
+import { WrappedCardCompact } from "@/components/WrappedCard";
 import { SubmitButton } from "@/components/SubmitButton";
 
 export default async function HomePage({
@@ -46,6 +48,15 @@ export default async function HomePage({
   const reading = myRecords.filter((r) => r.status === STATUS.READING);
   const done = myRecords.filter((r) => r.status === STATUS.DONE);
   const maxMonth = Math.max(...months, 1);
+
+  // 이 그룹에 공유된 독서 결산 카드
+  const sharedCards = membership.group.isPersonal ? [] : await getGroupSharedCards(membership.groupId);
+  const groupWrapped = await Promise.all(
+    sharedCards.map(async (sc) => ({
+      key: sc.id,
+      stats: await getWrappedStats(sc.card.userId, sc.card.year),
+    }))
+  );
 
   return (
     <>
@@ -188,6 +199,19 @@ export default async function HomePage({
               </div>
             )}
           </section>
+
+          {groupWrapped.length > 0 && (
+            <section className="card" style={{ marginTop: 16 }}>
+              <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>
+                🎉 그룹원 독서 결산 <span className="mini">이 그룹에 공유된 카드</span>
+              </h3>
+              <div style={{ display: "grid", gap: 8 }}>
+                {groupWrapped.map((w) => (
+                  <WrappedCardCompact key={w.key} stats={w.stats} />
+                ))}
+              </div>
+            </section>
+          )}
 
           {!isOwner(membership.role) && (
             <form action={leaveGroup} style={{ marginTop: 14, textAlign: "right" }}>

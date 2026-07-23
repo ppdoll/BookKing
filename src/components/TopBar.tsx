@@ -34,6 +34,7 @@ export function TopBar({
       <nav className="topnav">
         <Link href="/books/new">✏️ 책 등록</Link>
         <Link href="/shelf">📖 내 책장</Link>
+        <Link href="/wrapped">🎉 결산</Link>
         <Link href="/search">🔍 책 검색</Link>
         {(!current || current.group.isPersonal) && (
           <>
