@@ -30,9 +30,25 @@ export const getAffiliateConfig = cache(async (): Promise<AffiliateConfig> => {
 
 export type StoreLink = { store: string; url: string; affiliate: boolean };
 
-/** LinkPrice 딥링크 래핑 (merchant: yes24 | kyobobook) */
+/** LinkPrice 딥링크 래핑 (merchant: yes24 | kbbook) */
 function linkprice(merchant: string, affId: string, targetUrl: string) {
   return `https://click.linkprice.com/click.php?m=${merchant}&a=${encodeURIComponent(affId)}&l=9999&l_cd1=3&l_cd2=0&tu=${encodeURIComponent(targetUrl)}`;
+}
+
+/**
+ * 전자책 월정액 구독 CTA.
+ * 밀리의서재·윌라·리디는 개인 어필리에이트 프로그램이 없어(2026-07 확인) 제외.
+ * 예스24 북클럽만 기존 링크프라이스(yes24) 제휴로 커버 가능 —
+ * 단, 구독 전환 커미션 인정 여부는 예스24 콘솔에서 확인 필요.
+ */
+export function subscriptionCta(cfg: AffiliateConfig) {
+  const landing = "https://www.yes24.com/BookClub/Main";
+  return {
+    store: "예스24 북클럽",
+    desc: "월정액 전자책 구독",
+    url: cfg.linkprice ? linkprice("yes24", cfg.linkprice, landing) : landing,
+    affiliate: Boolean(cfg.linkprice),
+  };
 }
 
 export function buildStoreLinks(

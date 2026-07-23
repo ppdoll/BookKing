@@ -65,7 +65,7 @@ export default async function RecordDetailPage({ params }: { params: Promise<{ i
           </div>
         </div>
 
-        <StoreLinks title={record.book.title} isbn={record.book.isbn} />
+        <StoreLinks title={record.book.title} isbn={record.book.isbn} subscription />
 
         {mbti && mbti.length > 0 && (
           <>
