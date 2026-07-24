@@ -15,7 +15,7 @@ export async function StoreLinks({
 }) {
   const cfg = await getAffiliateConfig();
   const links = buildStoreLinks({ title, isbn }, cfg);
-  const crema = subscription ? cremaClubLink({ title, isbn }, cfg) : null;
+  const crema = subscription ? cremaClubLink({ title }) : null;
   const anyAffiliate = links.some((l) => l.affiliate) || Boolean(crema?.affiliate);
   const btnStyle = compact ? { fontSize: 11.5, padding: "1px 9px" } : undefined;
 
@@ -32,10 +32,10 @@ export async function StoreLinks({
           <a
             href={crema.url}
             target="_blank"
-            rel="noreferrer nofollow sponsored"
+            rel="noreferrer nofollow"
             className="btn sm"
             style={{ ...btnStyle, background: "var(--mint-soft)" }}
-            title="예스24 크레마클럽 전자책 구독에서 이 책 찾기"
+            title="예스24 크레마클럽 전자책 구독에서 이 책 찾기 (제목 검색)"
           >
             📱 크레마클럽 ↗
           </a>
@@ -43,7 +43,7 @@ export async function StoreLinks({
       </span>
       {anyAffiliate && !compact && (
         <p className="mini" style={{ margin: "6px 0 0", fontSize: 11.5 }}>
-          위 링크로 구매·구독 시 운영자가 제휴 수수료를 받을 수 있어요.
+          위 서점 링크로 구매 시 운영자가 제휴 수수료를 받을 수 있어요.
           {cfg.coupang &&
             " 이 서비스는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."}
         </p>
