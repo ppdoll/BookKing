@@ -99,7 +99,7 @@ export default async function ShelfPage({
         <div className="shelf">
           {records.map((r) => (
             <div className="shelfitem" key={r.id}>
-              <Link href={`/books/${r.id}/edit`}>
+              <Link href={`/records/${r.id}`}>
                 <span className="cover">
                   {r.book.thumbnailUrl ? (
                     <img src={r.book.thumbnailUrl} alt={r.book.title} />
@@ -111,7 +111,7 @@ export default async function ShelfPage({
                   )}
                 </span>
               </Link>
-              <b>{r.book.title}</b>
+              <b><Link href={`/records/${r.id}`}>{r.book.title}</Link></b>
               <span className="mini">{r.book.author}</span>
               <div style={{ marginTop: 2 }}>
                 {r.status === STATUS.DONE ? (

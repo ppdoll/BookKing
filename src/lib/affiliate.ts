@@ -36,18 +36,20 @@ function linkprice(merchant: string, affId: string, targetUrl: string) {
 }
 
 /**
- * 전자책 월정액 구독 CTA.
- * 밀리의서재·윌라·리디는 개인 어필리에이트 프로그램이 없어(2026-07 확인) 제외.
- * 예스24 북클럽만 기존 링크프라이스(yes24) 제휴로 커버 가능 —
- * 단, 구독 전환 커미션 인정 여부는 예스24 콘솔에서 확인 필요.
+ * 전자책 월정액 구독 CTA — 예스24 크레마클럽(bookclub.yes24.com)에서 이 책 검색.
+ * 밀리의서재·윌라·리디는 개인 어필리에이트가 없어(2026-07 확인) 제외.
+ * 예스24는 기존 링크프라이스(yes24) 제휴로 커버 — 단 구독 커미션 인정 여부는 콘솔 확인 필요.
+ * 한글 query는 예스24 제휴 게이트웨이에서 깨지므로 ISBN이 있을 때만 제휴 링크, 없으면 직링크.
  */
-export function subscriptionCta(cfg: AffiliateConfig) {
-  const landing = "https://www.yes24.com/BookClub/Main";
+export function cremaClubLink(book: { title: string; isbn?: string | null }, cfg: AffiliateConfig) {
+  const isbn = book.isbn?.trim().split(/\s+/).pop() || null;
+  const base = "https://bookclub.yes24.com/BookClub/Search?query=";
+  const target = base + encodeURIComponent(isbn ?? book.title);
   return {
-    store: "예스24 북클럽",
-    desc: "월정액 전자책 구독",
-    url: cfg.linkprice ? linkprice("yes24", cfg.linkprice, landing) : landing,
-    affiliate: Boolean(cfg.linkprice),
+    store: "예스24 크레마클럽",
+    desc: "전자책 구독으로 읽기",
+    url: cfg.linkprice && isbn ? linkprice("yes24", cfg.linkprice, target) : target,
+    affiliate: Boolean(cfg.linkprice && isbn),
   };
 }
 

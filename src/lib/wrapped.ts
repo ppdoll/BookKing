@@ -2,6 +2,15 @@ import { cache } from "react";
 import { prisma } from "@/lib/db";
 import { STATUS, ratingToStars, MBTI_ALL } from "@/lib/constants";
 
+export type WrappedBook = {
+  title: string;
+  author: string;
+  publisher: string | null;
+  thumbnailUrl: string | null;
+  isbn: string | null;
+  rating: number | null;
+};
+
 export type WrappedStats = {
   name: string;
   year: number;
@@ -10,6 +19,7 @@ export type WrappedStats = {
   fav: { title: string; thumbnailUrl: string | null; rating: number | null } | null;
   months: number[]; // 길이 12
   topMbti: string | null;
+  books: WrappedBook[]; // 올해 읽은 책 (별점 높은 순)
 };
 
 /**
@@ -34,7 +44,7 @@ export const getWrappedStats = cache(
           rating: true,
           endDate: true,
           recommendMbti: true,
-          book: { select: { title: true, thumbnailUrl: true } },
+          book: { select: { title: true, author: true, publisher: true, thumbnailUrl: true, isbn: true } },
         },
       }),
     ]);
@@ -55,14 +65,23 @@ export const getWrappedStats = cache(
     const months = Array(12).fill(0) as number[];
     for (const r of uniq) if (r.endDate) months[r.endDate.getMonth()]++;
 
-    const favRec = [...uniq].sort(
+    const sorted = [...uniq].sort(
       (a, b) =>
         (b.rating ?? -1) - (a.rating ?? -1) ||
         (b.endDate?.getTime() ?? 0) - (a.endDate?.getTime() ?? 0)
-    )[0];
+    );
+    const favRec = sorted[0];
     const fav = favRec
       ? { title: favRec.book.title, thumbnailUrl: favRec.book.thumbnailUrl, rating: favRec.rating }
       : null;
+    const books: WrappedBook[] = sorted.map((r) => ({
+      title: r.book.title,
+      author: r.book.author,
+      publisher: r.book.publisher,
+      thumbnailUrl: r.book.thumbnailUrl,
+      isbn: r.book.isbn,
+      rating: r.rating,
+    }));
 
     const tally = new Map<string, number>();
     for (const r of uniq) {
@@ -80,6 +99,7 @@ export const getWrappedStats = cache(
       fav,
       months,
       topMbti,
+      books,
     };
   }
 );

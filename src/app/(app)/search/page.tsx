@@ -117,6 +117,7 @@ export default async function SearchPage({
                   <b>{b.title}</b>{" "}
                   <span className="mini">
                     {b.author} · {b.publisher}
+                    {b.pubdate && b.pubdate.length >= 6 ? ` · ${b.pubdate.slice(0, 4)}년` : ""}
                     {b.price ? ` · ${b.price.toLocaleString()}원` : ""}
                     {b.link && (
                       <>
@@ -127,7 +128,17 @@ export default async function SearchPage({
                       </>
                     )}
                   </span>
-                  <StoreLinks title={b.title} isbn={b.isbn} compact />
+                  {b.description && (
+                    <details style={{ marginTop: 4 }}>
+                      <summary className="mini" style={{ cursor: "pointer", fontWeight: 700, color: "var(--accent)" }}>
+                        📖 책 소개
+                      </summary>
+                      <p className="mini" style={{ margin: "6px 0 0", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+                        {b.description}
+                      </p>
+                    </details>
+                  )}
+                  <StoreLinks title={b.title} isbn={b.isbn} compact subscription />
                 </div>
                 <Link href={registerHref(b)} className="btn sm pri">내 책장에 등록</Link>
               </div>

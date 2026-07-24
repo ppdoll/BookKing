@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { WrappedStats } from "@/lib/wrapped";
 import { mbtiLabel } from "@/lib/wrapped";
 import { Stars } from "@/components/Stars";
+import { StoreLinks } from "@/components/StoreLinks";
 
 const MONTHS = ["1","2","3","4","5","6","7","8","9","10","11","12"];
 
@@ -25,8 +26,8 @@ export function WrappedCardCompact({ stats, href }: { stats: WrappedStats; href?
   return href ? <Link href={href}>{inner}</Link> : inner;
 }
 
-/** 전체 결산 카드 (내 결산 / 공개 페이지) */
-export function WrappedCard({ stats }: { stats: WrappedStats }) {
+/** 전체 결산 카드 (내 결산 / 공개 페이지) — 책 목록은 눌러서 정보·구매/구독 링크 확인 */
+export async function WrappedCard({ stats }: { stats: WrappedStats }) {
   const maxMonth = Math.max(...stats.months, 1);
   const label = mbtiLabel(stats.topMbti);
 
@@ -87,6 +88,34 @@ export function WrappedCard({ stats }: { stats: WrappedStats }) {
               <p className="mini" style={{ margin: "14px 0 0", textAlign: "center" }}>
                 이런 분께 추천이 많았어요 — <b>{label}</b>
               </p>
+            )}
+
+            {stats.books.length > 0 && (
+              <div style={{ marginTop: 18, borderTop: "2px dashed var(--soft-line)", paddingTop: 14 }}>
+                <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 800 }}>
+                  📚 올해 읽은 책 <span className="mini">({stats.books.length}권) · 눌러서 정보 보기</span>
+                </p>
+                <div style={{ display: "grid", gap: 6 }}>
+                  {stats.books.map((b, i) => (
+                    <details key={`${b.isbn ?? b.title}-${i}`} style={{ border: "2px solid var(--bd)", borderRadius: 10, background: "var(--panel)", padding: "6px 10px" }}>
+                      <summary style={{ cursor: "pointer", fontSize: 13, listStyle: "none", display: "flex", alignItems: "center", gap: 8 }}>
+                        <span className="cover" style={{ width: 22, height: 30, flex: "none" }}>
+                          {b.thumbnailUrl ? <img src={b.thumbnailUrl} alt="" /> : <span className="bk" style={{ fontSize: 11 }}>📕</span>}
+                        </span>
+                        <b style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.title}</b>
+                        {b.rating !== null && <Stars rating={b.rating} size={11} />}
+                      </summary>
+                      <div style={{ marginTop: 8, paddingLeft: 30 }}>
+                        <p className="mini" style={{ margin: 0 }}>
+                          {b.author}
+                          {b.publisher ? ` · ${b.publisher}` : ""}
+                        </p>
+                        <StoreLinks title={b.title} isbn={b.isbn} compact subscription />
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              </div>
             )}
           </>
         )}

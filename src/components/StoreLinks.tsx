@@ -1,6 +1,6 @@
-import { getAffiliateConfig, buildStoreLinks, subscriptionCta } from "@/lib/affiliate";
+import { getAffiliateConfig, buildStoreLinks, cremaClubLink } from "@/lib/affiliate";
 
-/** 서점 구매 링크 줄 — 제휴 ID 설정 시 자동으로 제휴 링크 + 고지 문구 */
+/** 서점 구매 링크 + 크레마클럽 구독 링크 — 제휴 ID 설정 시 자동으로 제휴 링크 + 고지 문구 */
 export async function StoreLinks({
   title,
   isbn,
@@ -10,41 +10,38 @@ export async function StoreLinks({
   title: string;
   isbn?: string | null;
   compact?: boolean;
-  /** 전자책 월정액 구독 CTA 표시 (책 상세 등 단일 화면에서만) */
+  /** 전자책 구독(크레마클럽) 링크 표시 */
   subscription?: boolean;
 }) {
   const cfg = await getAffiliateConfig();
   const links = buildStoreLinks({ title, isbn }, cfg);
-  const anyAffiliate = links.some((l) => l.affiliate);
-  const sub = subscription ? subscriptionCta(cfg) : null;
+  const crema = subscription ? cremaClubLink({ title, isbn }, cfg) : null;
+  const anyAffiliate = links.some((l) => l.affiliate) || Boolean(crema?.affiliate);
+  const btnStyle = compact ? { fontSize: 11.5, padding: "1px 9px" } : undefined;
 
   return (
     <div style={{ marginTop: compact ? 4 : 8 }}>
       <span className="fieldrow" style={{ gap: 6 }}>
         {!compact && <span className="mini" style={{ fontWeight: 800 }}>🛒 구매·재고</span>}
         {links.map((l) => (
-          <a
-            key={l.store}
-            href={l.url}
-            target="_blank"
-            rel="noreferrer nofollow sponsored"
-            className="btn sm"
-            style={compact ? { fontSize: 11.5, padding: "1px 9px" } : undefined}
-          >
+          <a key={l.store} href={l.url} target="_blank" rel="noreferrer nofollow sponsored" className="btn sm" style={btnStyle}>
             {l.store} ↗
           </a>
         ))}
-      </span>
-      {sub && (
-        <span className="fieldrow" style={{ gap: 6, marginTop: 8 }}>
-          <span className="mini" style={{ fontWeight: 800 }}>📱 구독으로 읽기</span>
-          <a href={sub.url} target="_blank" rel="noreferrer nofollow sponsored" className="btn sm">
-            {sub.store} ↗
+        {crema && (
+          <a
+            href={crema.url}
+            target="_blank"
+            rel="noreferrer nofollow sponsored"
+            className="btn sm"
+            style={{ ...btnStyle, background: "var(--mint-soft)" }}
+            title="예스24 크레마클럽 전자책 구독에서 이 책 찾기"
+          >
+            📱 크레마클럽 ↗
           </a>
-          <span className="mini">{sub.desc}</span>
-        </span>
-      )}
-      {(anyAffiliate || sub?.affiliate) && !compact && (
+        )}
+      </span>
+      {anyAffiliate && !compact && (
         <p className="mini" style={{ margin: "6px 0 0", fontSize: 11.5 }}>
           위 링크로 구매·구독 시 운영자가 제휴 수수료를 받을 수 있어요.
           {cfg.coupang &&

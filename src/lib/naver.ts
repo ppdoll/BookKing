@@ -9,6 +9,8 @@ export type NaverBook = {
   link: string;
   price: number | null;
   isbn: string | null;
+  description: string;
+  pubdate: string;
 };
 
 export function naverConfigured() {
@@ -59,6 +61,8 @@ export async function searchNaverBooks(
     link: it.link ?? "",
     price: it.discount ? parseInt(it.discount, 10) || null : null,
     isbn: it.isbn?.trim() || null,
+    description: stripTags(it.description ?? ""),
+    pubdate: (it.pubdate ?? "").trim(),
   }));
 
   return { items };
