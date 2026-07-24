@@ -41,11 +41,17 @@ function linkprice(merchant: string, affId: string, targetUrl: string) {
  * 제목(한글)은 예스24 제휴 게이트웨이를 통과하면 인코딩이 깨지므로,
  * 제휴 링크 대신 **직링크**로 연결한다(작동 우선). 크레마 구독 커미션은 미확인이라 손실도 사실상 없음.
  */
+/** 크레마 검색용 제목 정제 — 괄호·대괄호·꺾쇠 부제/판형 표기 제거 (예: "불편한 편의점 (…에디션)" → "불편한 편의점"). 정제 시 크레마 히트율이 크게 오름(실측). */
+function cleanBookTitle(t: string) {
+  const cleaned = t.replace(/[([<{][^)\]>}]*[)\]>}]/g, "").replace(/\s+/g, " ").trim();
+  return cleaned || t;
+}
+
 export function cremaClubLink(book: { title: string }) {
   return {
     store: "예스24 크레마클럽",
     desc: "전자책 구독으로 읽기",
-    url: "https://bookclub.yes24.com/BookClub/Search?query=" + encodeURIComponent(book.title),
+    url: "https://bookclub.yes24.com/BookClub/Search?query=" + encodeURIComponent(cleanBookTitle(book.title)),
     affiliate: false,
   };
 }
