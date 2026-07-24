@@ -171,6 +171,7 @@ model Book {
   thumbnailUrl String?
   link         String?
   price        Int?
+  addonUrl     String? // 예스24 애드온 링크(link.yes24.com/a/…) — 최고 운영자가 수동 등록, eBook/크레마 버튼에 사용
   createdAt    DateTime @default(now())
 
   records ReadingRecord[]

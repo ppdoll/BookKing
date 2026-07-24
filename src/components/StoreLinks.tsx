@@ -6,17 +6,25 @@ export async function StoreLinks({
   isbn,
   compact = false,
   subscription = false,
+  addonUrl = null,
 }: {
   title: string;
   isbn?: string | null;
   compact?: boolean;
   /** 전자책 구독(크레마클럽) 링크 표시 */
   subscription?: boolean;
+  /** 책에 등록된 예스24 애드온 링크 — 있으면 eBook/크레마 버튼을 이 링크로 (3% 예치금) */
+  addonUrl?: string | null;
 }) {
   const cfg = await getAffiliateConfig();
   const links = buildStoreLinks({ title, isbn }, cfg);
-  const crema = subscription ? cremaClubLink({ title }) : null;
-  const anyAffiliate = links.some((l) => l.affiliate) || Boolean(crema?.affiliate);
+  // 구독/eBook 슬롯: 애드온 링크가 있으면 우선(적립), 없으면 일반 크레마 검색
+  const crema = subscription
+    ? addonUrl
+      ? { store: "예스24 eBook·크레마", url: addonUrl, addon: true }
+      : { ...cremaClubLink({ title }), addon: false }
+    : null;
+  const anyAffiliate = links.some((l) => l.affiliate);
   const btnStyle = compact ? { fontSize: 11.5, padding: "1px 9px" } : undefined;
 
   return (
@@ -32,12 +40,16 @@ export async function StoreLinks({
           <a
             href={crema.url}
             target="_blank"
-            rel="noreferrer nofollow"
+            rel={crema.addon ? "noreferrer sponsored" : "noreferrer nofollow"}
             className="btn sm"
             style={{ ...btnStyle, background: "var(--mint-soft)" }}
-            title="예스24 크레마클럽 전자책 구독에서 이 책 찾기 (제목 검색)"
+            title={
+              crema.addon
+                ? "예스24 애드온 링크 (전자책·크레마)"
+                : "예스24 크레마클럽 전자책 구독에서 이 책 찾기 (제목 검색)"
+            }
           >
-            📱 크레마클럽 ↗
+            📱 {crema.addon ? "예스24 eBook·크레마" : "크레마클럽"} ↗
           </a>
         )}
       </span>

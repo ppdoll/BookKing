@@ -110,7 +110,7 @@ export async function WrappedCard({ stats }: { stats: WrappedStats }) {
                           {b.author}
                           {b.publisher ? ` · ${b.publisher}` : ""}
                         </p>
-                        <StoreLinks title={b.title} isbn={b.isbn} compact subscription />
+                        <StoreLinks title={b.title} isbn={b.isbn} compact subscription addonUrl={b.addonUrl} />
                       </div>
                     </details>
                   ))}

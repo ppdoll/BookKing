@@ -2,14 +2,25 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/session";
+import { isSiteAdminUser } from "@/lib/slots";
+import { setBookAddonUrl } from "@/lib/actions/slot-actions";
 import { STATUS_LABEL, type Status, MBTI_ALL } from "@/lib/constants";
 import { fmtDateFull, readingDays } from "@/lib/format";
 import { Stars } from "@/components/Stars";
 import { StoreLinks } from "@/components/StoreLinks";
+import { SubmitButton } from "@/components/SubmitButton";
 
-export default async function RecordDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function RecordDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ adonok?: string; adonerr?: string }>;
+}) {
   const { id } = await params;
+  const { adonok, adonerr } = await searchParams;
   const user = await requireUser(`/records/${id}`);
+  const siteAdmin = isSiteAdminUser(user);
 
   const record = await prisma.readingRecord.findUnique({
     where: { id },
@@ -65,7 +76,37 @@ export default async function RecordDetailPage({ params }: { params: Promise<{ i
           </div>
         </div>
 
-        <StoreLinks title={record.book.title} isbn={record.book.isbn} subscription />
+        <StoreLinks
+          title={record.book.title}
+          isbn={record.book.isbn}
+          subscription
+          addonUrl={record.book.addonUrl}
+        />
+
+        {siteAdmin && (
+          <div style={{ marginTop: 12, borderTop: "2px dashed var(--soft-line)", paddingTop: 10 }}>
+            {adonok && <p className="mini" style={{ margin: "0 0 6px", color: "var(--mint)", fontWeight: 700 }}>✅ 애드온 링크가 저장됐어요.</p>}
+            {adonerr && <p className="mini" style={{ margin: "0 0 6px", color: "var(--danger)", fontWeight: 700 }}>link.yes24.com/a/… 형식의 애드온 링크만 넣을 수 있어요.</p>}
+            <form action={setBookAddonUrl}>
+              <input type="hidden" name="bookId" value={record.book.id} />
+              <input type="hidden" name="backTo" value={`/records/${record.id}`} />
+              <label className="mini" style={{ fontWeight: 800 }}>🛠 예스24 애드온 링크 (최고 운영자)</label>
+              <div className="fieldrow" style={{ gap: 6, marginTop: 4 }}>
+                <input
+                  className="input"
+                  name="addonUrl"
+                  defaultValue={record.book.addonUrl ?? ""}
+                  placeholder="https://link.yes24.com/a/..."
+                  style={{ flex: 1, minWidth: 200, fontSize: 12.5 }}
+                />
+                <SubmitButton className="btn sm pri" pendingText="저장…">저장</SubmitButton>
+              </div>
+              <p className="mini" style={{ margin: "5px 0 0" }}>
+                예스24에서 이 책의 애드온 링크를 만들어 붙여넣으면, eBook·크레마 버튼이 이 링크로 바뀌어 3% 예치금이 적립돼요. (비우면 일반 크레마 검색)
+              </p>
+            </form>
+          </div>
+        )}
 
         {mbti && mbti.length > 0 && (
           <>

@@ -185,6 +185,24 @@ export async function unsuspendUser(formData: FormData) {
   redirect("/admin/site?unsuspended=1");
 }
 
+/** (사이트 관리자) 책의 예스24 애드온 링크 등록/삭제 */
+export async function setBookAddonUrl(formData: FormData) {
+  const admin = await requireUser("/");
+  if (!isSiteAdminUser(admin)) redirect("/");
+
+  const bookId = String(formData.get("bookId") ?? "");
+  const backTo = String(formData.get("backTo") ?? "/");
+  const raw = String(formData.get("addonUrl") ?? "").trim();
+
+  // 애드온 링크만 허용 (오용 방지)
+  if (raw && !/^https:\/\/link\.yes24\.com\/a\/[A-Za-z0-9]+$/.test(raw)) {
+    redirect(`${backTo}?adonerr=1`);
+  }
+  await prisma.book.update({ where: { id: bookId }, data: { addonUrl: raw || null } });
+  revalidatePath(backTo);
+  redirect(`${backTo}?adonok=1`);
+}
+
 /** (사이트 관리자) 쿠폰 직접 생성 */
 export async function createCoupon(formData: FormData) {
   const admin = await requireUser("/admin/site");

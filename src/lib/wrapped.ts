@@ -8,6 +8,7 @@ export type WrappedBook = {
   publisher: string | null;
   thumbnailUrl: string | null;
   isbn: string | null;
+  addonUrl: string | null;
   rating: number | null;
 };
 
@@ -44,7 +45,7 @@ export const getWrappedStats = cache(
           rating: true,
           endDate: true,
           recommendMbti: true,
-          book: { select: { title: true, author: true, publisher: true, thumbnailUrl: true, isbn: true } },
+          book: { select: { title: true, author: true, publisher: true, thumbnailUrl: true, isbn: true, addonUrl: true } },
         },
       }),
     ]);
@@ -80,6 +81,7 @@ export const getWrappedStats = cache(
       publisher: r.book.publisher,
       thumbnailUrl: r.book.thumbnailUrl,
       isbn: r.book.isbn,
+      addonUrl: r.book.addonUrl,
       rating: r.rating,
     }));
 
