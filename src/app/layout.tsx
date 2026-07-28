@@ -31,8 +31,14 @@ export const metadata: Metadata = {
     title: "BookKing",
     statusBarStyle: "default",
   },
-  // 구형 iOS(16.3 이하) 호환용 — 홈 화면 실행 시 전체화면 유지
-  other: { "apple-mobile-web-app-capable": "yes" },
+  // 구형 iOS(16.3 이하) 호환용 + 검색엔진 소유확인(Vercel 환경변수로 코드만 넣으면 됨)
+  other: {
+    "apple-mobile-web-app-capable": "yes",
+    ...(process.env.NAVER_SITE_VERIFICATION
+      ? { "naver-site-verification": process.env.NAVER_SITE_VERIFICATION }
+      : {}),
+  },
+  verification: { google: process.env.GOOGLE_SITE_VERIFICATION },
 };
 
 export const viewport: Viewport = {
