@@ -38,7 +38,10 @@ export const metadata: Metadata = {
       ? { "naver-site-verification": process.env.NAVER_SITE_VERIFICATION }
       : {}),
   },
-  verification: { google: process.env.GOOGLE_SITE_VERIFICATION },
+  verification: {
+    // 구글 서치 콘솔 소유확인 (환경변수 설정 시 그 값 우선)
+    google: process.env.GOOGLE_SITE_VERIFICATION ?? "0PpPo4bINVY-5kETwF3FShArtLEOBEKzb2Remaj32QM",
+  },
 };
 
 export const viewport: Viewport = {
