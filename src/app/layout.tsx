@@ -34,9 +34,9 @@ export const metadata: Metadata = {
   // 구형 iOS(16.3 이하) 호환용 + 검색엔진 소유확인(Vercel 환경변수로 코드만 넣으면 됨)
   other: {
     "apple-mobile-web-app-capable": "yes",
-    ...(process.env.NAVER_SITE_VERIFICATION
-      ? { "naver-site-verification": process.env.NAVER_SITE_VERIFICATION }
-      : {}),
+    // 네이버 서치어드바이저 소유확인 (환경변수 설정 시 그 값 우선)
+    "naver-site-verification":
+      process.env.NAVER_SITE_VERIFICATION ?? "d964bbe938e0d6fe8d4fd089fcb7e331d4d1b1e0",
   },
   verification: {
     // 구글 서치 콘솔 소유확인 (환경변수 설정 시 그 값 우선)
