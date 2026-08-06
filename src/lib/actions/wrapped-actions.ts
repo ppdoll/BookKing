@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/session";
+import { requireUser, isClassroomStudent } from "@/lib/session";
 
 async function ensureCard(userId: string, year: number) {
   return prisma.shareCard.upsert({
@@ -26,6 +26,15 @@ export async function setWrappedPublic(formData: FormData) {
   const on = formData.get("on") === "1";
 
   const card = await ensureCard(user.id, year);
+
+  // 학교(교실) 모드 학생은 결산을 인터넷에 공개할 수 없음 — 기존 slug도 제거
+  if (on && (await isClassroomStudent(user.id))) {
+    if (card.publicSlug) {
+      await prisma.shareCard.update({ where: { id: card.id }, data: { publicSlug: null } });
+    }
+    redirect(`/wrapped?year=${year}`);
+  }
+
   await prisma.shareCard.update({
     where: { id: card.id },
     data: { publicSlug: on ? card.publicSlug ?? randomBytes(7).toString("base64url") : null },

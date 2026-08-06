@@ -69,6 +69,18 @@ export function isOwner(role: string) {
   return role === ROLE.OWNER;
 }
 
+/**
+ * 학교(교실) 모드 그룹의 학생(MEMBER) 여부 — 상업 링크·공개 공유 차단 판단에 사용.
+ * 교사(OWNER/ADMIN)는 개인 자격에 영향 없음. (요청 내 캐시)
+ */
+export const isClassroomStudent = cache(async (userId: string) => {
+  const m = await prisma.groupMember.findFirst({
+    where: { userId, role: ROLE.MEMBER, group: { classroomMode: true } },
+    select: { id: true },
+  });
+  return Boolean(m);
+});
+
 /** 현재 그룹에서 최소 권한을 요구. 부족하면 홈으로 */
 export async function requireGroupRole(userId: string, minRole: Role) {
   const membership = await getCurrentMembership(userId);

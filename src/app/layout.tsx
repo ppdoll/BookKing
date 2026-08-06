@@ -53,6 +53,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko">
       <body>
         {children}
+        <footer style={{ textAlign: "center", padding: "28px 12px 40px", fontSize: 12, color: "var(--sub)" }}>
+          <a href="/privacy" style={{ color: "inherit", textDecoration: "underline" }}>개인정보 처리방침</a>
+          {" · "}
+          <a href="/terms" style={{ color: "inherit", textDecoration: "underline" }}>이용약관</a>
+          {" · "}
+          <a href="/manual.html" style={{ color: "inherit", textDecoration: "underline" }}>도움말</a>
+        </footer>
         <ServiceWorkerRegister />
         <InstallPrompt />
       </body>

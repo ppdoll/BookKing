@@ -46,6 +46,9 @@ export default async function JoinPage({
     include: { owner: { select: { name: true } }, members: { select: { userId: true } } },
   });
 
+  // 학교(교실) 모드 그룹은 구글 가입이 아니라 학생용 반번호 입장 페이지로
+  if (group?.classroomMode) redirect(`/class/${code}`);
+
   const session = await auth();
   const userId = session?.user?.id ?? null;
   const user = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;

@@ -7,6 +7,7 @@ export async function StoreLinks({
   compact = false,
   subscription = false,
   addonUrl = null,
+  hidden = false,
 }: {
   title: string;
   isbn?: string | null;
@@ -15,7 +16,10 @@ export async function StoreLinks({
   subscription?: boolean;
   /** 책에 등록된 예스24 애드온 링크 — 있으면 eBook/크레마 버튼을 이 링크로 (3% 예치금) */
   addonUrl?: string | null;
+  /** 학교(교실) 모드 — 학생에게는 상업 링크를 아예 표시하지 않음 */
+  hidden?: boolean;
 }) {
+  if (hidden) return null;
   const cfg = await getAffiliateConfig();
   const links = buildStoreLinks({ title, isbn }, cfg);
   // 구독/eBook 슬롯: 애드온 링크가 있으면 우선(적립), 없으면 일반 크레마 검색

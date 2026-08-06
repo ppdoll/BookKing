@@ -24,7 +24,7 @@ export default async function RecordDetailPage({
 
   const record = await prisma.readingRecord.findUnique({
     where: { id },
-    include: { book: true, user: { select: { name: true } }, group: { select: { name: true } } },
+    include: { book: true, user: { select: { name: true } }, group: { select: { name: true, classroomMode: true } } },
   });
   if (!record || record.deletedAt) redirect("/");
 
@@ -81,6 +81,7 @@ export default async function RecordDetailPage({
           isbn={record.book.isbn}
           subscription
           addonUrl={record.book.addonUrl}
+          hidden={record.group.classroomMode}
         />
 
         {siteAdmin && (

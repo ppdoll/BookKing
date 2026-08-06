@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getWrappedStats } from "@/lib/wrapped";
+import { isClassroomStudent } from "@/lib/session";
 import { WrappedCard } from "@/components/WrappedCard";
 
 const SITE_URL = "https://book-king-two.vercel.app";
@@ -11,7 +12,7 @@ async function loadCard(slug: string) {
   const card = await prisma.shareCard.findUnique({ where: { publicSlug: slug } });
   if (!card) return null;
   const stats = await getWrappedStats(card.userId, card.year);
-  return stats;
+  return { stats, userId: card.userId };
 }
 
 export async function generateMetadata({
@@ -20,8 +21,9 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const stats = await loadCard(slug);
-  if (!stats) return { title: "독서 결산 — BookKing" };
+  const data = await loadCard(slug);
+  if (!data) return { title: "독서 결산 — BookKing" };
+  const { stats } = data;
 
   const title = `${stats.name}님의 ${stats.year} 독서 결산 📚`;
   const parts = [`올해 ${stats.totalBooks}권 완독`];
@@ -51,8 +53,10 @@ export default async function PublicWrappedPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const stats = await loadCard(slug);
-  if (!stats) notFound();
+  const data = await loadCard(slug);
+  if (!data) notFound();
+  const { stats, userId } = data;
+  const hideCommercial = await isClassroomStudent(userId);
 
   return (
     <main className="container" style={{ maxWidth: 560 }}>
@@ -62,7 +66,7 @@ export default async function PublicWrappedPage({
         </Link>
       </div>
 
-      <WrappedCard stats={stats} />
+      <WrappedCard stats={stats} hideCommercial={hideCommercial} />
 
       <div style={{ textAlign: "center", marginTop: 22 }}>
         <p className="mini" style={{ margin: "0 0 10px" }}>

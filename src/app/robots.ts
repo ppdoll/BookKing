@@ -8,9 +8,9 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/login", "/manual.html"],
-        // 로그인 뒤 개인/그룹 페이지, API, 개인 공유 링크는 색인 제외
-        disallow: ["/api/", "/admin/", "/books/", "/records/", "/shelf", "/search", "/wrapped", "/w/", "/join/", "/groups/", "/slots", "/welcome", "/suspended"],
+        allow: ["/", "/login", "/manual.html", "/privacy", "/terms"],
+        // 로그인 뒤 개인/그룹 페이지, API, 개인 공유 링크, 반 입장 링크는 색인 제외
+        disallow: ["/api/", "/admin/", "/books/", "/records/", "/shelf", "/search", "/wrapped", "/w/", "/join/", "/class/", "/groups/", "/slots", "/welcome", "/suspended"],
       },
     ],
     sitemap: `${SITE}/sitemap.xml`,

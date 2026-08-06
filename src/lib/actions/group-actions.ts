@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { requireUser, GROUP_COOKIE, getCurrentMembership, isOwner, isAdmin } from "@/lib/session";
 import { ROLE, INVITE_EXPIRY_DAYS } from "@/lib/constants";
 import { getSlotStatus } from "@/lib/slots";
+import { hashPassword } from "@/lib/password";
 
 /** 가입 처리 공통 — 승인제 그룹이면 신청 접수, 아니면 즉시 가입 */
 async function joinOrApply(userId: string, group: { id: string; joinApproval: boolean }, backTo: string) {
@@ -115,22 +116,100 @@ export async function setMemberRole(formData: FormData) {
   revalidatePath("/admin/group");
 }
 
-/** (그룹장) 그룹 옵션 변경 — 외부 검색 허용 / 보기 전용 */
+/** (그룹장) 그룹 옵션 변경 — 외부 검색 허용 / 보기 전용 / 학교 모드 */
 export async function updateGroupOptions(formData: FormData) {
   const user = await requireUser("/admin/group");
   const membership = await getCurrentMembership(user.id);
   if (!membership || !isOwner(membership.role)) redirect("/");
 
+  const classroomMode = formData.get("classroomMode") === "on";
   await prisma.group.update({
     where: { id: membership.groupId },
     data: {
-      searchable: formData.get("searchable") === "on",
+      classroomMode,
+      // 학교 모드면 학생 보호를 위해 외부 검색 노출은 강제로 끔
+      searchable: classroomMode ? false : formData.get("searchable") === "on",
       readOnly: formData.get("readOnly") === "on",
       joinApproval: formData.get("joinApproval") === "on",
     },
   });
   revalidatePath("/admin/group");
   redirect("/admin/group?options=1");
+}
+
+/** (그룹장) 학교 모드 학생 입장 비밀번호 설정 — scrypt 해시로 저장 */
+export async function setJoinPassword(formData: FormData) {
+  const user = await requireUser("/admin/group");
+  const membership = await getCurrentMembership(user.id);
+  if (!membership || !isOwner(membership.role)) redirect("/");
+
+  const pw = String(formData.get("password") ?? "").trim();
+  if (pw.length < 4) redirect("/admin/group?pwerr=1");
+
+  await prisma.group.update({
+    where: { id: membership.groupId },
+    data: { joinPassword: hashPassword(pw) },
+  });
+  revalidatePath("/admin/group");
+  redirect("/admin/group?pw=1");
+}
+
+/** (그룹장) 명렬 일괄 추가 — 한 줄에 "반번호, 별명" (별명 생략 시 반번호를 별명으로) */
+export async function addRosterStudents(formData: FormData) {
+  const user = await requireUser("/admin/group");
+  const membership = await getCurrentMembership(user.id);
+  if (!membership || !isOwner(membership.role)) redirect("/");
+
+  const rows = String(formData.get("roster") ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const idx = line.indexOf(",");
+      const classNo = (idx === -1 ? line : line.slice(0, idx)).trim();
+      const nickname = (idx === -1 ? "" : line.slice(idx + 1)).trim() || classNo;
+      return { classNo, nickname };
+    })
+    .filter((r) => r.classNo && r.classNo.length <= 20 && r.nickname.length <= 20);
+
+  if (rows.length > 0) {
+    await prisma.classroomStudent.createMany({
+      data: rows.map((r) => ({ groupId: membership.groupId, classNo: r.classNo, nickname: r.nickname })),
+      skipDuplicates: true, // 이미 있는 반번호는 건너뜀
+    });
+  }
+  revalidatePath("/admin/group");
+  redirect("/admin/group?roster=1");
+}
+
+/** (그룹장) 명렬 항목 삭제 */
+export async function removeRosterStudent(formData: FormData) {
+  const user = await requireUser("/admin/group");
+  const membership = await getCurrentMembership(user.id);
+  if (!membership || !isOwner(membership.role)) redirect("/");
+
+  const id = String(formData.get("studentId") ?? "");
+  const entry = await prisma.classroomStudent.findUnique({ where: { id } });
+  if (!entry || entry.groupId !== membership.groupId) redirect("/admin/group");
+
+  await prisma.classroomStudent.delete({ where: { id } });
+  revalidatePath("/admin/group");
+  redirect("/admin/group?rosterdel=1");
+}
+
+/** (그룹장) 명렬 배정 초기화 — 잘못 입장한 반번호를 다시 입장 가능하게 (기존 학생 계정은 유지) */
+export async function resetRosterClaim(formData: FormData) {
+  const user = await requireUser("/admin/group");
+  const membership = await getCurrentMembership(user.id);
+  if (!membership || !isOwner(membership.role)) redirect("/");
+
+  const id = String(formData.get("studentId") ?? "");
+  const entry = await prisma.classroomStudent.findUnique({ where: { id } });
+  if (!entry || entry.groupId !== membership.groupId) redirect("/admin/group");
+
+  await prisma.classroomStudent.update({ where: { id }, data: { claimedByUserId: null } });
+  revalidatePath("/admin/group");
+  redirect("/admin/group?rosterreset=1");
 }
 
 /** 검색으로 공개 그룹에 가입 (searchable 그룹만, 승인제 그룹은 신청 접수) */

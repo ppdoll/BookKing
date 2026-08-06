@@ -27,7 +27,7 @@ export function WrappedCardCompact({ stats, href }: { stats: WrappedStats; href?
 }
 
 /** 전체 결산 카드 (내 결산 / 공개 페이지) — 책 목록은 눌러서 정보·구매/구독 링크 확인 */
-export async function WrappedCard({ stats }: { stats: WrappedStats }) {
+export async function WrappedCard({ stats, hideCommercial = false }: { stats: WrappedStats; hideCommercial?: boolean }) {
   const maxMonth = Math.max(...stats.months, 1);
   const label = mbtiLabel(stats.topMbti);
 
@@ -110,7 +110,7 @@ export async function WrappedCard({ stats }: { stats: WrappedStats }) {
                           {b.author}
                           {b.publisher ? ` · ${b.publisher}` : ""}
                         </p>
-                        <StoreLinks title={b.title} isbn={b.isbn} compact subscription addonUrl={b.addonUrl} />
+                        <StoreLinks title={b.title} isbn={b.isbn} compact subscription addonUrl={b.addonUrl} hidden={hideCommercial} />
                       </div>
                     </details>
                   ))}

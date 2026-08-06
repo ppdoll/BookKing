@@ -34,6 +34,7 @@ model User {
   slotRequests      SlotRequest[]
   joinRequests      GroupJoinRequest[]
   shareCards        ShareCard[]
+  claimedStudent    ClassroomStudent?  @relation("StudentClaim")
 }
 
 model Account {
@@ -82,6 +83,8 @@ model Group {
   readOnly        Boolean  @default(false) // 보기 전용 (그룹장·운영자만 기록 등록·수정)
   joinApproval    Boolean  @default(false) // 가입 승인제 (그룹장·운영자 승인 필요)
   isPersonal      Boolean  @default(false) // 개인 책장 (가입 시 자동 생성, 1인 전용, 이용권 미차감)
+  classroomMode   Boolean  @default(false) // 학교(교실) 모드 — 명렬 기반 학생 입장, 상업링크·공개공유 차단, 검색 강제 비노출
+  joinPassword    String? // 교실 모드 학생 입장 비밀번호 (scrypt 해시 "salt:hash", 평문 저장 안 함)
   createdAt       DateTime @default(now())
 
   owner        User               @relation("GroupOwner", fields: [ownerId], references: [id])
@@ -90,8 +93,25 @@ model Group {
   records      ReadingRecord[]
   joinRequests GroupJoinRequest[]
   sharedCards  ShareCardGroup[]
+  roster       ClassroomStudent[]
 
   @@index([createdById])
+}
+
+// 학교(교실) 모드 명렬 — 선생님이 미리 등록한 반번호+별명. 학생이 반번호+비밀번호로 입장 시 claim됨.
+model ClassroomStudent {
+  id              String   @id @default(cuid())
+  groupId         String
+  classNo         String // 반번호 (문자 허용: "15", "2반 3번" 등)
+  nickname        String // 별명 (실명 금지 — 가명 처리)
+  claimedByUserId String?  @unique // 입장 완료 시 배정된 학생 계정
+  createdAt       DateTime @default(now())
+
+  group     Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  claimedBy User? @relation("StudentClaim", fields: [claimedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([groupId, classNo])
+  @@index([groupId])
 }
 
 // 독서 결산 카드 — 유저×연도 1개. 공개(publicSlug) / 그룹 공유(ShareCardGroup)를 독립적으로 설정.
