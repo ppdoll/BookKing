@@ -4,7 +4,8 @@ import { prisma } from "@/lib/db";
 import { requireUser, getCurrentMembership, isOwner } from "@/lib/session";
 import { ROLE, ROLE_LABEL, type Role } from "@/lib/constants";
 import { fmtDate, fmtDateFull } from "@/lib/format";
-import { regenerateInvite, setMemberRole, transferOwnership, updateGroupOptions, removeMember, setJoinPassword, addRosterStudents, removeRosterStudent, resetRosterClaim } from "@/lib/actions/group-actions";
+import { regenerateInvite, setMemberRole, transferOwnership, updateGroupOptions, removeMember, setJoinPassword, addRosterStudents, removeRosterStudent, resetRosterClaim, setGroupExpiry } from "@/lib/actions/group-actions";
+import { daysUntilExpiry } from "@/lib/group-expiry";
 import { restoreRecord } from "@/lib/actions/record-actions";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { CopyButton } from "@/components/CopyButton";
@@ -16,9 +17,10 @@ export default async function AdminGroupPage({
   searchParams: Promise<{
     created?: string; transferred?: string; options?: string; removed?: string;
     pw?: string; pwerr?: string; roster?: string; rosterdel?: string; rosterreset?: string;
+    expon?: string; expoff?: string; experr?: string;
   }>;
 }) {
-  const { created, transferred, options, removed, pw, pwerr, roster: rosterOk, rosterdel, rosterreset } = await searchParams;
+  const { created, transferred, options, removed, pw, pwerr, roster: rosterOk, rosterdel, rosterreset, expon, expoff, experr } = await searchParams;
   const user = await requireUser("/admin/group");
   const membership = await getCurrentMembership(user.id);
   if (!membership || !isOwner(membership.role)) redirect("/");
@@ -49,6 +51,10 @@ export default async function AdminGroupPage({
   const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const inviteUrl = `${proto}://${host}/join/${group.inviteCode}`;
   const classUrl = `${proto}://${host}/class/${group.inviteCode}`;
+  const expiryDays = daysUntilExpiry(group);
+  // <input type="date">가 요구하는 YYYY-MM-DD (로컬 기준)
+  const toDateInput = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const inviteExpired = group.inviteExpiresAt < new Date();
   const daysLeft = Math.ceil((group.inviteExpiresAt.getTime() - Date.now()) / 86400000);
 
@@ -67,6 +73,10 @@ export default async function AdminGroupPage({
       {rosterOk && <div className="toast">🧑‍🎓 명렬이 추가됐어요. (이미 있는 반번호는 건너뜀)</div>}
       {rosterdel && <div className="toast">명렬에서 삭제했어요.</div>}
       {rosterreset && <div className="toast">배정을 초기화했어요. 해당 반번호로 다시 입장할 수 있어요.</div>}
+      {expon && <div className="toast">🗓 만료일이 설정됐어요. 그 날이 지나면 기록이 모두 삭제돼요.</div>}
+      {expoff && <div className="toast">만료일을 해제했어요. 그룹이 계속 유지돼요.</div>}
+      {experr === "format" && <div className="toast err">날짜 형식이 올바르지 않아요.</div>}
+      {experr === "past" && <div className="toast err">오늘보다 뒤의 날짜를 선택해주세요.</div>}
 
       <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16, alignItems: "start" }}>
         <section className="card tablewrap">
@@ -187,6 +197,42 @@ export default async function AdminGroupPage({
               </form>
               <CopyButton text={inviteUrl} />
             </span>
+          </section>
+
+          <section className="card">
+            <h3 style={{ margin: "0 0 6px", fontSize: 15 }}>🗓 만료일 (자동 삭제)</h3>
+            <p className="mini" style={{ margin: "0 0 10px" }}>
+              설정한 날짜가 지나면 <b>이 그룹과 모든 독서 기록</b>이 영구 삭제돼요.
+              {group.classroomMode && " 학생 계정도 함께 지워져요."} 되돌릴 수 없으니 신중히 정해주세요.
+            </p>
+            {group.expiresAt ? (
+              <p className="mini" style={{ margin: "0 0 10px", fontWeight: 700, color: "var(--danger)" }}>
+                ⏳ {fmtDateFull(group.expiresAt)}에 삭제 예정
+                {expiryDays !== null && ` (${expiryDays}일 남음)`}
+              </p>
+            ) : (
+              <p className="mini" style={{ margin: "0 0 10px" }}>현재 만료일 없음 — 그룹이 계속 유지돼요.</p>
+            )}
+            <form action={setGroupExpiry}>
+              <div className="fieldrow" style={{ gap: 6 }}>
+                <input
+                  className="input"
+                  type="date"
+                  name="expiresAt"
+                  defaultValue={group.expiresAt ? toDateInput(group.expiresAt) : ""}
+                  min={toDateInput(new Date(Date.now() + 86400000))}
+                  style={{ flex: 1 }}
+                  aria-label="만료일"
+                />
+                <SubmitButton className="btn sm dngr" pendingText="저장…">만료일 저장</SubmitButton>
+              </div>
+            </form>
+            {group.expiresAt && (
+              <form action={setGroupExpiry} style={{ marginTop: 8 }}>
+                <input type="hidden" name="expiresAt" value="" />
+                <SubmitButton className="btn sm" pendingText="해제…">만료일 해제</SubmitButton>
+              </form>
+            )}
           </section>
 
           <section className="card">

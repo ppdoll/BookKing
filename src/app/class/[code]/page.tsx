@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { auth, signIn } from "@/auth";
 import { prisma } from "@/lib/db";
+import { isExpired } from "@/lib/group-expiry";
 import { SubmitButton } from "@/components/SubmitButton";
 import { InAppBrowserGuard } from "@/components/InAppBrowserGuard";
 
@@ -38,8 +39,9 @@ export default async function ClassEntryPage({
 
   const group = await prisma.group.findUnique({
     where: { inviteCode: code },
-    select: { name: true, classroomMode: true, joinPassword: true },
+    select: { name: true, classroomMode: true, joinPassword: true, expiresAt: true },
   });
+  const expired = group ? isExpired(group) : false;
 
   return (
     <div className="center-page">
@@ -55,6 +57,13 @@ export default async function ClassEntryPage({
           <>
             <p style={{ margin: 0, fontWeight: 800 }}>😢 유효하지 않은 입장 링크예요</p>
             <p className="mini" style={{ margin: "6px 0 0" }}>선생님께 정확한 링크를 다시 받아주세요.</p>
+          </>
+        ) : expired ? (
+          <>
+            <p style={{ margin: 0, fontWeight: 800 }}>🗓 활동이 끝난 반이에요</p>
+            <p className="mini" style={{ margin: "6px 0 0" }}>
+              『{group.name}』은 만료일이 지나 기록이 모두 정리됐어요. 그동안 함께 읽어줘서 고마워요! 📚
+            </p>
           </>
         ) : !group.joinPassword ? (
           <>

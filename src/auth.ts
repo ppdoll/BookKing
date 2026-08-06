@@ -64,6 +64,8 @@ providers.push(
 
       const group = await prisma.group.findUnique({ where: { inviteCode: code } });
       if (!group || !group.classroomMode) return null;
+      // 만료된 반은 입장 불가 (삭제 대기 중)
+      if (group.expiresAt && group.expiresAt <= new Date()) return null;
 
       const { verifyPassword } = await import("@/lib/password");
       if (!verifyPassword(password, group.joinPassword)) return null;

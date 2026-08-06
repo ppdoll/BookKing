@@ -49,6 +49,9 @@ export default async function JoinPage({
   // 학교(교실) 모드 그룹은 구글 가입이 아니라 학생용 반번호 입장 페이지로
   if (group?.classroomMode) redirect(`/class/${code}`);
 
+  // 만료일이 지난 그룹은 없는 그룹처럼 취급 (삭제 대기 중)
+  const groupExpired = Boolean(group?.expiresAt && group.expiresAt <= new Date());
+
   const session = await auth();
   const userId = session?.user?.id ?? null;
   const user = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;
@@ -75,7 +78,7 @@ export default async function JoinPage({
       <InAppBrowserGuard />
 
       <div className="card">
-        {!group ? (
+        {!group || groupExpired ? (
           <>
             <p style={{ margin: 0, fontWeight: 800 }}>😢 유효하지 않은 초대 링크예요</p>
             <p className="mini" style={{ margin: "6px 0 0" }}>링크가 재발급되었을 수 있어요. 그룹장에게 새 링크를 요청해주세요.</p>

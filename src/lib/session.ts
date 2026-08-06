@@ -38,10 +38,17 @@ export async function requireSessionUser() {
   return user;
 }
 
-/** 사용자의 그룹 멤버십 목록 (요청 내 캐시) */
+/**
+ * 사용자의 그룹 멤버십 목록 (요청 내 캐시).
+ * 만료일이 지난 그룹은 즉시 제외 — 실제 데이터 삭제는 일일 크론이 하지만,
+ * 만료 시점부터는 어떤 화면에서도 열람할 수 없어야 한다.
+ */
 export const getMemberships = cache(async (userId: string) => {
   return prisma.groupMember.findMany({
-    where: { userId },
+    where: {
+      userId,
+      group: { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+    },
     include: { group: true },
     orderBy: { joinedAt: "asc" },
   });

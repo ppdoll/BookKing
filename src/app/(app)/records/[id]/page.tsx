@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/session";
+import { isExpired } from "@/lib/group-expiry";
 import { isSiteAdminUser } from "@/lib/slots";
 import { setBookAddonUrl } from "@/lib/actions/slot-actions";
 import { STATUS_LABEL, type Status, MBTI_ALL } from "@/lib/constants";
@@ -24,9 +25,10 @@ export default async function RecordDetailPage({
 
   const record = await prisma.readingRecord.findUnique({
     where: { id },
-    include: { book: true, user: { select: { name: true } }, group: { select: { name: true, classroomMode: true } } },
+    include: { book: true, user: { select: { name: true } }, group: { select: { name: true, classroomMode: true, expiresAt: true } } },
   });
   if (!record || record.deletedAt) redirect("/");
+  if (isExpired(record.group)) redirect("/"); // 만료된 그룹의 기록은 열람 불가
 
   // 같은 그룹 멤버만 열람 가능 (그룹 격리)
   const membership = await prisma.groupMember.findUnique({

@@ -11,7 +11,14 @@ import { getSlotStatus } from "@/lib/slots";
 import { hashPassword } from "@/lib/password";
 
 /** 가입 처리 공통 — 승인제 그룹이면 신청 접수, 아니면 즉시 가입 */
-async function joinOrApply(userId: string, group: { id: string; joinApproval: boolean }, backTo: string) {
+async function joinOrApply(
+  userId: string,
+  group: { id: string; joinApproval: boolean; expiresAt: Date | null },
+  backTo: string
+) {
+  // 만료일이 지난 그룹(삭제 대기)에는 가입할 수 없다
+  if (group.expiresAt && group.expiresAt <= new Date()) redirect("/join/invalid");
+
   if (group.joinApproval) {
     // 이미 멤버면 그냥 입장
     const existing = await prisma.groupMember.findUnique({
@@ -135,6 +142,33 @@ export async function updateGroupOptions(formData: FormData) {
   });
   revalidatePath("/admin/group");
   redirect("/admin/group?options=1");
+}
+
+/**
+ * (그룹장) 만료일 설정·해제 — 만료일이 지나면 그룹·기록·학생 계정이 영구 삭제된다.
+ * 날짜(YYYY-MM-DD)를 그 날 끝(23:59:59)으로 저장해, 지정한 날까지는 사용할 수 있게 한다.
+ */
+export async function setGroupExpiry(formData: FormData) {
+  const user = await requireUser("/admin/group");
+  const membership = await getCurrentMembership(user.id);
+  if (!membership || !isOwner(membership.role)) redirect("/");
+
+  const raw = String(formData.get("expiresAt") ?? "").trim();
+
+  if (!raw) {
+    await prisma.group.update({ where: { id: membership.groupId }, data: { expiresAt: null } });
+    revalidatePath("/admin/group");
+    redirect("/admin/group?expoff=1");
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) redirect("/admin/group?experr=format");
+  const expiresAt = new Date(`${raw}T23:59:59`);
+  if (Number.isNaN(expiresAt.getTime())) redirect("/admin/group?experr=format");
+  if (expiresAt <= new Date()) redirect("/admin/group?experr=past");
+
+  await prisma.group.update({ where: { id: membership.groupId }, data: { expiresAt } });
+  revalidatePath("/admin/group");
+  redirect("/admin/group?expon=1");
 }
 
 /** (그룹장) 학교 모드 학생 입장 비밀번호 설정 — scrypt 해시로 저장 */
