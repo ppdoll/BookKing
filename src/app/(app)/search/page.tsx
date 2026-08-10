@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireUser, getCurrentMembership } from "@/lib/session";
 import { STATUS, STATUS_LABEL, type Status } from "@/lib/constants";
 import { fmtDate } from "@/lib/format";
-import { searchNaverBooks } from "@/lib/naver";
+import { searchBooks } from "@/lib/book-search";
 import { Stars } from "@/components/Stars";
 import { StoreLinks } from "@/components/StoreLinks";
 
@@ -19,7 +19,7 @@ export default async function SearchPage({
   if (!membership) redirect("/groups/search");
 
   const query = q.trim();
-  const [groupResults, naver] = query
+  const [groupResults, web] = query
     ? await Promise.all([
         prisma.readingRecord.findMany({
           where: {
@@ -34,11 +34,11 @@ export default async function SearchPage({
           orderBy: { updatedAt: "desc" },
           take: 20,
         }),
-        searchNaverBooks(query),
+        searchBooks(query),
       ])
-    : [[], { items: [] as Awaited<ReturnType<typeof searchNaverBooks>>["items"] }];
+    : [[], { items: [] } as Awaited<ReturnType<typeof searchBooks>>];
 
-  const registerHref = (b: (typeof naver.items)[number]) => {
+  const registerHref = (b: (typeof web.items)[number]) => {
     const p = new URLSearchParams();
     p.set("title", b.title);
     p.set("author", b.author);
@@ -54,7 +54,7 @@ export default async function SearchPage({
     <>
       <div className="page-h">
         <h1>🔍 책 검색</h1>
-        <span className="mini">그룹 기록 + 네이버 책 검색을 한 번에</span>
+        <span className="mini">그룹 기록 + 온라인 책 검색을 한 번에</span>
       </div>
 
       <form method="GET" action="/search" className="fieldrow" style={{ marginBottom: 18 }}>
@@ -106,11 +106,12 @@ export default async function SearchPage({
 
           <section className="card">
             <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>
-              🟢 네이버 책 검색 결과 <span className="mini">{naver.items.length}건</span>
+              {web.source === "google" ? "🔵 구글 북스 검색 결과" : "💛 카카오 책 검색 결과"}{" "}
+              <span className="mini">{web.items.length}건</span>
             </h3>
-            {naver.error && <p className="mini" style={{ color: "var(--danger)", fontWeight: 700 }}>{naver.error}</p>}
-            {!naver.error && naver.items.length === 0 && <p className="mini" style={{ margin: 0 }}>검색 결과가 없어요.</p>}
-            {naver.items.map((b, i) => (
+            {web.error && <p className="mini" style={{ color: "var(--danger)", fontWeight: 700 }}>{web.error}</p>}
+            {!web.error && web.items.length === 0 && <p className="mini" style={{ margin: 0 }}>검색 결과가 없어요.</p>}
+            {web.items.map((b, i) => (
               <div className="pickrow" key={b.isbn ?? i}>
                 <span className="cover">{b.image ? <img src={b.image} alt="" /> : <span className="bk">📕</span>}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -123,7 +124,7 @@ export default async function SearchPage({
                       <>
                         {" · "}
                         <a href={b.link} target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>
-                          네이버에서 보기 ↗
+                          책 정보 보기 ↗
                         </a>
                       </>
                     )}

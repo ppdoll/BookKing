@@ -5,7 +5,7 @@ import { createRecord, updateRecord } from "@/lib/actions/record-actions";
 import { StarInput } from "@/components/StarInput";
 import { MbtiPicker } from "@/components/MbtiPicker";
 import { SubmitButton } from "@/components/SubmitButton";
-import type { NaverBook } from "@/lib/naver";
+import type { BookSearchItem } from "@/lib/book-search";
 
 export type BookFormInitial = {
   recordId?: string;
@@ -45,7 +45,7 @@ export function BookForm({
   const [price, setPrice] = useState<number | null>(initial.price ?? null);
   const [isbn, setIsbn] = useState(initial.isbn ?? "");
 
-  const [candidates, setCandidates] = useState<NaverBook[] | null>(null);
+  const [candidates, setCandidates] = useState<BookSearchItem[] | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searchNote, setSearchNote] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
@@ -61,8 +61,8 @@ export function BookForm({
     setSearchNote(null);
     try {
       const params = new URLSearchParams({ title, author, publisher });
-      const res = await fetch(`/api/naver-books?${params.toString()}`);
-      const data = (await res.json()) as { items: NaverBook[]; error?: string; note?: string };
+      const res = await fetch(`/api/book-search?${params.toString()}`);
+      const data = (await res.json()) as { items: BookSearchItem[]; error?: string; note?: string };
       if (data.error) setSearchError(data.error);
       if (data.note) setSearchNote(data.note);
       setCandidates(data.items);
@@ -73,7 +73,7 @@ export function BookForm({
     }
   }
 
-  function pickCandidate(book: NaverBook) {
+  function pickCandidate(book: BookSearchItem) {
     setTitle(book.title);
     setAuthor(book.author);
     setPublisher(book.publisher);
@@ -166,7 +166,7 @@ export function BookForm({
           )}
           {candidates && candidates.length > 0 && (
             <>
-              <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 800 }}>네이버 책 검색 결과 — 등록할 책을 선택하세요</p>
+              <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 800 }}>책 검색 결과 — 등록할 책을 선택하세요</p>
               {candidates.map((b, i) => (
                 <div className="pickrow" key={`${b.isbn ?? i}`}>
                   <span className="cover">{b.image ? <img src={b.image} alt="" /> : <span className="bk">📕</span>}</span>

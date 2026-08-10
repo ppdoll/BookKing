@@ -30,10 +30,18 @@ npm run dev          # http://localhost:3000
      - 배포: `https://<도메인>/api/auth/callback/google`
 4. 발급된 ID/Secret을 `.env`의 `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`에 입력
 
-### 2. 네이버 책 검색
-1. [네이버 개발자센터](https://developers.naver.com) → 애플리케이션 등록
-2. 사용 API에서 **검색** 선택 (일 25,000회 무료)
-3. Client ID/Secret을 `.env`의 `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET`에 입력
+### 2. 카카오 책 검색 (1차)
+1. [카카오 개발자센터](https://developers.kakao.com) → 내 애플리케이션 → 애플리케이션 추가
+2. **앱 키 → REST API 키** 복사 (무료)
+3. `.env`의 `KAKAO_REST_API_KEY`에 입력
+
+> ⚠️ 네이버 책 검색 API는 **2026-07-31자로 서비스 종료**됐어요.
+> ('쇼핑·책·전문자료' 검색 API는 NAVER API HUB 이관 대상에서 제외 — 유예 기간 없이 종료, 대체 API 미제공.
+> [개발자센터 공지 32530](https://developers.naver.com/notice/article/32530))
+
+### 3. 구글 북스 (2차 폴백, 선택)
+카카오 장애·쿼터 초과 시 자동으로 넘어가요. 키 없이도 동작하지만 공용 쿼터라 실패가 잦아요.
+[Google Cloud Console](https://console.cloud.google.com)에서 **Books API** 사용 설정 후 API 키를 만들어 `GOOGLE_BOOKS_API_KEY`에 입력하면 안정적이에요.
 
 ## Vercel 배포
 
@@ -42,7 +50,9 @@ npm run dev          # http://localhost:3000
    - `DATABASE_URL` — Neon 연결 문자열
    - `AUTH_SECRET` — 새 랜덤 값 (`npx auth secret`)
    - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
-   - `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET`
+   - `KAKAO_REST_API_KEY` — 책 검색 (필수)
+   - `GOOGLE_BOOKS_API_KEY` — 책 검색 2차 폴백 (선택)
+   - `CRON_SECRET` — 만료 그룹 자동 삭제 크론 보호 (권장)
    - ⚠️ `ALLOW_DEV_LOGIN`은 설정하지 않기 (게스트 로그인 차단)
 3. Deploy 클릭 — 이후 `git push`만 하면 자동 재배포
 4. 배포 도메인 확인 후 **Google OAuth 리디렉션 URI 추가**:
@@ -61,7 +71,7 @@ src/
 │  │  ├─ books/new, [id]/edit, records/[id]
 │  │  ├─ shelf, search, groups/new
 │  │  └─ admin/posts, admin/group   # 운영자 글 관리 · 그룹장 관리
-│  └─ api/naver-books       # 책정보 생성용 네이버 API 프록시
+│  └─ api/book-search       # 책정보 생성용 책 검색 프록시 (카카오→구글북스)
 ├─ lib/
 │  ├─ actions/              # 서버 액션 (그룹·기록·유저)
 │  ├─ rankings.ts           # 책 랭킹(3명+) · 독서왕 · 월별 차트

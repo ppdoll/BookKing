@@ -71,7 +71,7 @@ export default async function RecordDetailPage({
             {record.book.link && (
               <p style={{ margin: "8px 0 0" }}>
                 <a href={record.book.link} target="_blank" rel="noreferrer" className="mini" style={{ textDecoration: "underline" }}>
-                  네이버에서 보기 ↗{record.book.price ? ` (${record.book.price.toLocaleString()}원)` : ""}
+                  책 정보 보기 ↗{record.book.price ? ` (${record.book.price.toLocaleString()}원)` : ""}
                 </a>
               </p>
             )}
