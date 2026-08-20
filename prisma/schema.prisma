@@ -86,6 +86,7 @@ model Group {
   classroomMode   Boolean  @default(false) // 학교(교실) 모드 — 명렬 기반 학생 입장, 상업링크·공개공유 차단, 검색 강제 비노출
   joinPassword    String? // 교실 모드 학생 입장 비밀번호 (scrypt 해시 "salt:hash", 평문 저장 안 함)
   expiresAt       DateTime? // 만료일 — 지나면 그룹·기록·학생 계정이 영구 삭제됨 (일일 크론 + 즉시 접근 차단)
+  iconVersion     String? // 그룹 아이콘 캐시 버전(해시 8자). 값이 있으면 아이콘이 등록된 상태 — 실제 이미지는 GroupIcon
   createdAt       DateTime @default(now())
 
   owner        User               @relation("GroupOwner", fields: [ownerId], references: [id])
@@ -95,6 +96,7 @@ model Group {
   joinRequests GroupJoinRequest[]
   sharedCards  ShareCardGroup[]
   roster       ClassroomStudent[]
+  icon         GroupIcon?
 
   @@index([createdById])
 }
@@ -113,6 +115,18 @@ model ClassroomStudent {
 
   @@unique([groupId, classNo])
   @@index([groupId])
+}
+
+// 그룹 아이콘 이미지 — 상단바·파비콘·OG에 함께 사용되는 256x256 PNG.
+// 외부 스토리지 없이 DB에 바이트로 저장하고, 캐시 무효화는 Group.iconVersion으로 한다.
+// (Group 본체와 분리해 두어 일반 그룹 조회 시 이미지 바이트를 읽지 않게 함)
+model GroupIcon {
+  groupId   String   @id
+  data      Bytes
+  mime      String   @default("image/png")
+  updatedAt DateTime @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
 }
 
 // 독서 결산 카드 — 유저×연도 1개. 공개(publicSlug) / 그룹 공유(ShareCardGroup)를 독립적으로 설정.

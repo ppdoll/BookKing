@@ -10,6 +10,7 @@ import { restoreRecord } from "@/lib/actions/record-actions";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { CopyButton } from "@/components/CopyButton";
 import { SubmitButton } from "@/components/SubmitButton";
+import { GroupIconUpload } from "@/components/GroupIconUpload";
 
 export default async function AdminGroupPage({
   searchParams,
@@ -18,9 +19,10 @@ export default async function AdminGroupPage({
     created?: string; transferred?: string; options?: string; removed?: string;
     pw?: string; pwerr?: string; roster?: string; rosterdel?: string; rosterreset?: string;
     expon?: string; expoff?: string; experr?: string;
+    icon?: string; icondel?: string; iconerr?: string;
   }>;
 }) {
-  const { created, transferred, options, removed, pw, pwerr, roster: rosterOk, rosterdel, rosterreset, expon, expoff, experr } = await searchParams;
+  const { created, transferred, options, removed, pw, pwerr, roster: rosterOk, rosterdel, rosterreset, expon, expoff, experr, icon, icondel, iconerr } = await searchParams;
   const user = await requireUser("/admin/group");
   const membership = await getCurrentMembership(user.id);
   if (!membership || !isOwner(membership.role)) redirect("/");
@@ -77,6 +79,10 @@ export default async function AdminGroupPage({
       {expoff && <div className="toast">만료일을 해제했어요. 그룹이 계속 유지돼요.</div>}
       {experr === "format" && <div className="toast err">날짜 형식이 올바르지 않아요.</div>}
       {experr === "past" && <div className="toast err">오늘보다 뒤의 날짜를 선택해주세요.</div>}
+      {icon && <div className="toast">🖼 그룹 아이콘이 저장됐어요. (탭 아이콘은 새로고침 후 반영될 수 있어요)</div>}
+      {icondel && <div className="toast">그룹 아이콘을 삭제했어요. 기본 아이콘으로 돌아가요.</div>}
+      {iconerr === "format" && <div className="toast err">이미지를 읽을 수 없어요. PNG·JPG로 다시 시도해주세요.</div>}
+      {iconerr === "size" && <div className="toast err">이미지가 너무 커요. 더 작은 이미지를 사용해주세요.</div>}
 
       <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16, alignItems: "start" }}>
         <section className="card tablewrap">
@@ -138,6 +144,16 @@ export default async function AdminGroupPage({
         </section>
 
         <div style={{ display: "grid", gap: 16 }}>
+          <section className="card">
+            <h3 style={{ margin: "0 0 6px", fontSize: 15 }}>🖼 그룹 아이콘</h3>
+            <p className="mini" style={{ margin: "0 0 10px" }}>
+              상단바와 브라우저 탭 아이콘(파비콘), 초대 링크 공유 미리보기에 함께 쓰여요.
+            </p>
+            <GroupIconUpload
+              currentSrc={group.iconVersion ? `/api/group-icon/${group.id}?v=${group.iconVersion}` : null}
+            />
+          </section>
+
           <section className="card">
             <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>⚙️ 그룹 옵션</h3>
             <form action={updateGroupOptions}>

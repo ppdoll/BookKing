@@ -1,6 +1,6 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -169,6 +169,57 @@ export async function setGroupExpiry(formData: FormData) {
   await prisma.group.update({ where: { id: membership.groupId }, data: { expiresAt } });
   revalidatePath("/admin/group");
   redirect("/admin/group?expon=1");
+}
+
+/** 아이콘 최대 크기 — 클라이언트에서 256x256 PNG로 줄여 보내므로 넉넉한 상한 */
+const MAX_ICON_BYTES = 200_000;
+
+/**
+ * (그룹장) 그룹 아이콘 등록 — 클라이언트에서 256x256 PNG(data URL)로 변환해 보낸다.
+ * 상단바·파비콘·OG 미리보기에 함께 쓰인다.
+ */
+export async function setGroupIcon(formData: FormData) {
+  const user = await requireUser("/admin/group");
+  const membership = await getCurrentMembership(user.id);
+  if (!membership || !isOwner(membership.role)) redirect("/");
+
+  const dataUrl = String(formData.get("icon") ?? "");
+  const prefix = "data:image/png;base64,";
+  if (!dataUrl.startsWith(prefix)) redirect("/admin/group?iconerr=format");
+
+  const data = Buffer.from(dataUrl.slice(prefix.length), "base64");
+  if (data.length === 0) redirect("/admin/group?iconerr=format");
+  if (data.length > MAX_ICON_BYTES) redirect("/admin/group?iconerr=size");
+
+  // 캐시 무효화용 버전 — 이미지가 바뀌면 URL도 바뀌어 즉시 반영된다
+  const version = createHash("sha256").update(data).digest("hex").slice(0, 8);
+
+  await prisma.$transaction([
+    prisma.groupIcon.upsert({
+      where: { groupId: membership.groupId },
+      update: { data, mime: "image/png" },
+      create: { groupId: membership.groupId, data, mime: "image/png" },
+    }),
+    prisma.group.update({ where: { id: membership.groupId }, data: { iconVersion: version } }),
+  ]);
+
+  revalidatePath("/", "layout"); // 상단바·파비콘이 모든 화면에 걸쳐 있어 레이아웃까지 갱신
+  redirect("/admin/group?icon=1");
+}
+
+/** (그룹장) 그룹 아이콘 삭제 — 기본 BookKing 아이콘으로 돌아간다 */
+export async function removeGroupIcon() {
+  const user = await requireUser("/admin/group");
+  const membership = await getCurrentMembership(user.id);
+  if (!membership || !isOwner(membership.role)) redirect("/");
+
+  await prisma.$transaction([
+    prisma.groupIcon.deleteMany({ where: { groupId: membership.groupId } }),
+    prisma.group.update({ where: { id: membership.groupId }, data: { iconVersion: null } }),
+  ]);
+
+  revalidatePath("/", "layout");
+  redirect("/admin/group?icondel=1");
 }
 
 /** (그룹장) 학교 모드 학생 입장 비밀번호 설정 — scrypt 해시로 저장 */

@@ -16,11 +16,20 @@ export async function generateMetadata({
   const { code } = await params;
   const group = await prisma.group.findUnique({
     where: { inviteCode: code },
-    select: { name: true, classroomMode: true },
+    select: { id: true, name: true, classroomMode: true, iconVersion: true },
   });
   if (!group || !group.classroomMode) return {};
   const title = `『${group.name}』 반 입장 — BookKing`;
-  return { title, description: "반번호와 비밀번호로 우리 반 독서장에 입장해요 📚", robots: { index: false } };
+  const description = "반번호와 비밀번호로 우리 반 독서장에 입장해요 📚";
+  const images = group.iconVersion
+    ? [{ url: `/api/group-icon/${group.id}?v=${group.iconVersion}`, width: 256, height: 256, alt: group.name }]
+    : undefined;
+  return {
+    title,
+    description,
+    robots: { index: false },
+    openGraph: { title, description, ...(images ? { images } : {}) },
+  };
 }
 
 export default async function ClassEntryPage({

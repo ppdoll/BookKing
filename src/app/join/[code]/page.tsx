@@ -17,17 +17,21 @@ export async function generateMetadata({
   const { code } = await params;
   const group = await prisma.group.findUnique({
     where: { inviteCode: code },
-    select: { name: true, isPersonal: true },
+    select: { id: true, name: true, isPersonal: true, iconVersion: true },
   });
   if (!group || group.isPersonal) return {};
 
   const title = `『${group.name}』 초대장 — BookKing`;
   const description = "함께 읽고 기록하는 그룹 독서장, BookKing에서 초대장이 도착했어요! 📚";
+  // 그룹 아이콘이 있으면 카톡·SNS 미리보기 썸네일로 사용 (없으면 기본 OG 이미지)
+  const images = group.iconVersion
+    ? [{ url: `/api/group-icon/${group.id}?v=${group.iconVersion}`, width: 256, height: 256, alt: group.name }]
+    : undefined;
   return {
     title,
     description,
-    openGraph: { title, description },
-    twitter: { title, description },
+    openGraph: { title, description, ...(images ? { images } : {}) },
+    twitter: { title, description, ...(images ? { images } : {}) },
   };
 }
 

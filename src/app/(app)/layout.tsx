@@ -1,8 +1,29 @@
+import type { Metadata } from "next";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { requireUser, getMemberships, getCurrentMembership, isAdmin } from "@/lib/session";
 import { isSiteAdminUser } from "@/lib/slots";
 import { daysUntilExpiry, EXPIRY_WARN_DAYS } from "@/lib/group-expiry";
 import { TopBar } from "@/components/TopBar";
+
+/**
+ * 앱 화면의 파비콘을 현재 그룹 아이콘으로 교체.
+ * 여기서 icons를 지정하면 app/icon.png 파일 규칙을 덮어쓰고, 아이콘이 없는 그룹은
+ * 아무것도 반환하지 않아 기본 BookKing 아이콘이 그대로 쓰인다.
+ * (로그인·초대 등 (app) 밖 페이지는 항상 기본 아이콘)
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return {};
+
+  const current = await getCurrentMembership(userId);
+  if (!current?.group.iconVersion) return {};
+
+  return {
+    icons: { icon: `/api/group-icon/${current.groupId}?v=${current.group.iconVersion}` },
+  };
+}
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();

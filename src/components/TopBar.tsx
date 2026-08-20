@@ -13,7 +13,11 @@ export function TopBar({
   pendingJoins = 0,
 }: {
   user: { id: string; name: string | null };
-  memberships: { groupId: string; role: string; group: { id: string; name: string; joinApproval?: boolean; isPersonal?: boolean } }[];
+  memberships: {
+    groupId: string;
+    role: string;
+    group: { id: string; name: string; joinApproval?: boolean; isPersonal?: boolean; iconVersion?: string | null };
+  }[];
   currentGroupId: string | null;
   isSiteAdmin?: boolean;
   pendingRequests?: number;
@@ -27,6 +31,15 @@ export function TopBar({
       <Link href="/" className="logo">
         📚 Book<em>King</em>
       </Link>
+      {current?.group.iconVersion && (
+        <img
+          src={`/api/group-icon/${current.group.id}?v=${current.group.iconVersion}`}
+          alt=""
+          width={26}
+          height={26}
+          style={{ borderRadius: 8, border: "2px solid var(--bd)", objectFit: "cover", flex: "none" }}
+        />
+      )}
       <GroupSelect
         groups={memberships.map((m) => ({ id: m.group.id, name: m.group.name }))}
         currentId={currentGroupId}
