@@ -20,6 +20,12 @@ export type ClassroomProgress = {
   enteredCount: number;
   noRecordCount: number; // 입장했지만 아직 기록이 없는 학생
   weekActiveCount: number; // 이번 주(월요일 00:00 KST 이후) 기록을 남긴 학생 수
+  /** 완독률 = 완독 권수 / 전체 기록 권수 (기록이 없으면 0) */
+  doneRate: number;
+  /** 참여율 = 기록을 1권 이상 남긴 학생 / 명렬 인원 */
+  participationRate: number;
+  /** 명렬 인원 1인당 평균 기록 권수 */
+  avgBooks: number;
 };
 
 /** 학생 표 정렬 기준 */
@@ -116,14 +122,20 @@ export async function getClassroomProgress(groupId: string): Promise<ClassroomPr
   );
 
   const weekStart = startOfWeekKst();
+  const rosterCount = students.length;
+  const activeCount = students.filter((s) => s.total > 0).length;
+  const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
 
   return {
     students,
     totals,
-    rosterCount: students.length,
+    rosterCount,
     enteredCount: students.filter((s) => s.entered).length,
     noRecordCount: students.filter((s) => s.entered && s.total === 0).length,
     weekActiveCount: students.filter((s) => s.lastAt !== null && s.lastAt >= weekStart).length,
+    doneRate: pct(totals.done, totals.total),
+    participationRate: pct(activeCount, rosterCount),
+    avgBooks: rosterCount > 0 ? Math.round((totals.total / rosterCount) * 10) / 10 : 0,
   };
 }
 

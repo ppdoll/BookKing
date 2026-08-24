@@ -49,6 +49,31 @@ function ProgressBar({ wish, reading, done, max }: { wish: number; reading: numb
   );
 }
 
+/** 요약 지표 하나 — 퍼센트 지표는 막대까지 함께 보여준다 */
+function Metric({
+  label, hint, value, ratio, detail,
+}: { label: string; hint: string; value: string; ratio: number | null; detail: string }) {
+  return (
+    <div>
+      <div className="mini" style={{ fontWeight: 800 }}>
+        {label} <span style={{ fontWeight: 500 }}>· {hint}</span>
+      </div>
+      <div className="num" style={{ fontSize: 26, fontWeight: 900, lineHeight: 1.2 }}>{value}</div>
+      {ratio !== null && (
+        <span
+          style={{
+            display: "block", height: 8, marginTop: 4, background: "var(--chip)",
+            border: "2px solid var(--bd)", borderRadius: 6, overflow: "hidden",
+          }}
+        >
+          <span style={{ display: "block", width: `${ratio}%`, height: "100%", background: C.done }} />
+        </span>
+      )}
+      <div className="mini num" style={{ marginTop: 3 }}>{detail}</div>
+    </div>
+  );
+}
+
 export function ClassroomBoard({
   data,
   groupName,
@@ -61,7 +86,7 @@ export function ClassroomBoard({
   /** 정렬 칩 링크 — 다른 쿼리(랭킹 탭 등)를 유지하면서 정렬만 바꾼다 */
   sortHref: (key: SortKey) => string;
 }) {
-  const { totals, rosterCount, enteredCount, noRecordCount, weekActiveCount } = data;
+  const { totals, rosterCount, enteredCount, noRecordCount, weekActiveCount, doneRate, participationRate, avgBooks } = data;
   const students = sortStudents(data.students, sort);
   const maxTotal = Math.max(...students.map((s) => s.total), 1);
 
@@ -73,6 +98,34 @@ export function ClassroomBoard({
         <Tile label="독서중" emoji="📖" value={totals.reading} bg={C.reading} />
         <Tile label="완독" emoji="🏆" value={totals.done} bg="var(--panel)" />
       </div>
+
+      {/* 반 전체 요약 지표 */}
+      <section className="card" style={{ marginBottom: 16 }}>
+        <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>📊 반 전체 요약</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
+          <Metric
+            label="완독률"
+            hint="완독 / 전체 기록"
+            value={`${doneRate}%`}
+            ratio={doneRate}
+            detail={`${totals.done} / ${totals.total}권`}
+          />
+          <Metric
+            label="참여율"
+            hint="1권 이상 기록한 학생"
+            value={`${participationRate}%`}
+            ratio={participationRate}
+            detail={`${Math.round((participationRate / 100) * rosterCount)} / ${rosterCount}명`}
+          />
+          <Metric
+            label="1인 평균"
+            hint="명렬 인원 기준"
+            value={`${avgBooks}권`}
+            ratio={null}
+            detail={`전체 ${totals.total}권`}
+          />
+        </div>
+      </section>
 
       <section className="card" style={{ marginBottom: 16 }}>
         <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>
@@ -139,7 +192,9 @@ export function ClassroomBoard({
                   >
                     <td className="num"><b>{s.classNo}</b></td>
                     <td>
-                      {s.nickname}
+                      <Link href={`/admin/student/${s.id}`} style={{ textDecoration: "underline" }}>
+                        {s.nickname}
+                      </Link>
                       {!s.entered && <span className="pill p-ghost" style={{ marginLeft: 6 }}>미입장</span>}
                     </td>
                     <td><ProgressBar wish={s.wish} reading={s.reading} done={s.done} max={maxTotal} /></td>
