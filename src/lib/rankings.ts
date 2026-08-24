@@ -115,12 +115,13 @@ export async function getTopReaders(
 }
 
 /** 올해의 독서 기록 — 내 월별 완독 수 (현재 그룹) */
-export async function getMonthlyDone(userId: string, groupId: string, year: number) {
+/** userId가 null이면 그룹 전체(예: 학교 모드의 반 전체) 월별 완독 수 */
+export async function getMonthlyDone(userId: string | null, groupId: string, year: number) {
   const start = new Date(year, 0, 1);
   const end = new Date(year + 1, 0, 1);
   const records = await prisma.readingRecord.findMany({
     where: {
-      userId,
+      ...(userId ? { userId } : {}),
       groupId,
       status: STATUS.DONE,
       deletedAt: null,

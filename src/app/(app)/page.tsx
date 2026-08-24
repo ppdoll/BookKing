@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUser, getCurrentMembership, canWriteInGroup, isOwner } from "@/lib/session";
+import { requireUser, getCurrentMembership, canWriteInGroup, isOwner, isAdmin } from "@/lib/session";
 import { STATUS } from "@/lib/constants";
 import { fmtDate, readingDays } from "@/lib/format";
 import { startReading, finishReading } from "@/lib/actions/record-actions";
@@ -11,6 +11,8 @@ import { getMonthlyDone } from "@/lib/rankings";
 import { getGroupSharedCards, getWrappedStats } from "@/lib/wrapped";
 import { Stars } from "@/components/Stars";
 import { RankingSidebar } from "@/components/RankingSidebar";
+import { ClassroomBoard } from "@/components/ClassroomBoard";
+import { getClassroomProgress } from "@/lib/classroom-dashboard";
 import { WrappedCardCompact } from "@/components/WrappedCard";
 import { SubmitButton } from "@/components/SubmitButton";
 
@@ -28,20 +30,26 @@ export default async function HomePage({
 
   const viewOnly = !canWriteInGroup(membership.role, membership.group);
 
+  // 학교(교실) 모드의 선생님(그룹장·운영자)에게는 본인 책장 대신 학생 현황을 보여준다
+  const isClassAdmin = membership.group.classroomMode && isAdmin(membership.role);
+
   const year = new Date().getFullYear();
-  const [myRecords, groupFeed, months] = await Promise.all([
-    prisma.readingRecord.findMany({
-      where: { userId: user.id, groupId: membership.groupId, deletedAt: null },
-      include: { book: true },
-      orderBy: { updatedAt: "desc" },
-    }),
+  const [myRecords, groupFeed, months, classProgress] = await Promise.all([
+    isClassAdmin
+      ? []
+      : prisma.readingRecord.findMany({
+          where: { userId: user.id, groupId: membership.groupId, deletedAt: null },
+          include: { book: true },
+          orderBy: { updatedAt: "desc" },
+        }),
     prisma.readingRecord.findMany({
       where: { groupId: membership.groupId, deletedAt: null },
       include: { book: true, user: { select: { name: true } } },
       orderBy: { updatedAt: "desc" },
       take: 8,
     }),
-    getMonthlyDone(user.id, membership.groupId, year),
+    getMonthlyDone(isClassAdmin ? null : user.id, membership.groupId, year),
+    isClassAdmin ? getClassroomProgress(membership.groupId) : null,
   ]);
 
   const wish = myRecords.filter((r) => r.status === STATUS.WISH);
@@ -70,71 +78,76 @@ export default async function HomePage({
       )}
       <div className="home-grid">
         <div>
-          <div className="board">
-            <section className="bcol">
-              <h3>🌱 <span className="pill p-wish">읽을 예정</span> <span className="cnt">{wish.length}권</span></h3>
-              {wish.length === 0 && <p className="mini">읽고 싶은 책을 등록해보세요!</p>}
-              {wish.slice(0, 5).map((r) => (
-                <div className="bcard" key={r.id}>
-                  <b><Link href={`/books/${r.id}/edit`}>{r.book.title}</Link></b>
-                  <span className="mini">{r.book.author}</span>
-                  {!viewOnly && (
-                    <form action={startReading}>
-                      <input type="hidden" name="recordId" value={r.id} />
-                      <SubmitButton pendingText="시작하는 중… 📖">독서 시작!</SubmitButton>
-                    </form>
-                  )}
-                </div>
-              ))}
-            </section>
-            <section className="bcol">
-              <h3>📖 <span className="pill p-read">독서중</span> <span className="cnt">{reading.length}권</span></h3>
-              {reading.length === 0 && <p className="mini">지금 읽고 있는 책이 없어요.</p>}
-              {reading.slice(0, 5).map((r) => {
-                const days = r.startDate
-                  ? Math.max(1, Math.round((Date.now() - r.startDate.getTime()) / 86400000) + 1)
-                  : null;
-                return (
+          {isClassAdmin && classProgress ? (
+            <ClassroomBoard data={classProgress} groupName={membership.group.name} />
+          ) : (
+            <div className="board">
+              <section className="bcol">
+                <h3>🌱 <span className="pill p-wish">읽을 예정</span> <span className="cnt">{wish.length}권</span></h3>
+                {wish.length === 0 && <p className="mini">읽고 싶은 책을 등록해보세요!</p>}
+                {wish.slice(0, 5).map((r) => (
                   <div className="bcard" key={r.id}>
                     <b><Link href={`/books/${r.id}/edit`}>{r.book.title}</Link></b>
-                    <span className="mini">
-                      {r.book.author}
-                      {r.startDate ? ` · ${fmtDate(r.startDate)}부터` : ""}
-                      {days ? ` · ${days}일째` : ""}
-                    </span>
+                    <span className="mini">{r.book.author}</span>
                     {!viewOnly && (
-                      <form action={finishReading}>
+                      <form action={startReading}>
                         <input type="hidden" name="recordId" value={r.id} />
-                        <SubmitButton pendingText="축하 준비 중… 🎉">다 읽었어요!</SubmitButton>
+                        <SubmitButton pendingText="시작하는 중… 📖">독서 시작!</SubmitButton>
                       </form>
                     )}
                   </div>
-                );
-              })}
-            </section>
-            <section className="bcol">
-              <h3>🏆 <span className="pill p-done">완독</span> <span className="cnt">{done.length}권</span></h3>
-              {done.length === 0 && <p className="mini">완독한 책이 여기 쌓여요.</p>}
-              {done.slice(0, 5).map((r) => {
-                const days = readingDays(r.startDate, r.endDate);
-                return (
-                  <div className="bcard" key={r.id}>
-                    <b><Link href={`/books/${r.id}/edit`}>{r.book.title}</Link></b>
-                    <span className="mini">
-                      {r.book.author}
-                      {r.endDate ? ` · ${fmtDate(r.endDate)} 완독` : ""}
-                      {days ? ` · ${days}일 걸림` : ""}
-                    </span>
-                    {r.rating !== null && <Stars rating={r.rating} size={13} />}
-                  </div>
-                );
-              })}
-            </section>
-          </div>
+                ))}
+              </section>
+              <section className="bcol">
+                <h3>📖 <span className="pill p-read">독서중</span> <span className="cnt">{reading.length}권</span></h3>
+                {reading.length === 0 && <p className="mini">지금 읽고 있는 책이 없어요.</p>}
+                {reading.slice(0, 5).map((r) => {
+                  const days = r.startDate
+                    ? Math.max(1, Math.round((Date.now() - r.startDate.getTime()) / 86400000) + 1)
+                    : null;
+                  return (
+                    <div className="bcard" key={r.id}>
+                      <b><Link href={`/books/${r.id}/edit`}>{r.book.title}</Link></b>
+                      <span className="mini">
+                        {r.book.author}
+                        {r.startDate ? ` · ${fmtDate(r.startDate)}부터` : ""}
+                        {days ? ` · ${days}일째` : ""}
+                      </span>
+                      {!viewOnly && (
+                        <form action={finishReading}>
+                          <input type="hidden" name="recordId" value={r.id} />
+                          <SubmitButton pendingText="축하 준비 중… 🎉">다 읽었어요!</SubmitButton>
+                        </form>
+                      )}
+                    </div>
+                  );
+                })}
+              </section>
+              <section className="bcol">
+                <h3>🏆 <span className="pill p-done">완독</span> <span className="cnt">{done.length}권</span></h3>
+                {done.length === 0 && <p className="mini">완독한 책이 여기 쌓여요.</p>}
+                {done.slice(0, 5).map((r) => {
+                  const days = readingDays(r.startDate, r.endDate);
+                  return (
+                    <div className="bcard" key={r.id}>
+                      <b><Link href={`/books/${r.id}/edit`}>{r.book.title}</Link></b>
+                      <span className="mini">
+                        {r.book.author}
+                        {r.endDate ? ` · ${fmtDate(r.endDate)} 완독` : ""}
+                        {days ? ` · ${days}일 걸림` : ""}
+                      </span>
+                      {r.rating !== null && <Stars rating={r.rating} size={13} />}
+                    </div>
+                  );
+                })}
+              </section>
+            </div>
+          )}
 
           <section className="card" style={{ marginBottom: 16 }}>
             <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>
-              🗓️ 올해의 독서 기록 <span className="mini">{year}년 · 월별 완독 수</span>
+              🗓️ {isClassAdmin ? "우리 반 올해의 독서 기록" : "올해의 독서 기록"}{" "}
+              <span className="mini">{year}년 · 월별 완독 수{isClassAdmin ? " (학생 전체)" : ""}</span>
             </h3>
             <div className="chart">
               {months.map((count, i) => (
