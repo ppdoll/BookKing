@@ -12,16 +12,16 @@ import { getGroupSharedCards, getWrappedStats } from "@/lib/wrapped";
 import { Stars } from "@/components/Stars";
 import { RankingSidebar } from "@/components/RankingSidebar";
 import { ClassroomBoard } from "@/components/ClassroomBoard";
-import { getClassroomProgress } from "@/lib/classroom-dashboard";
+import { getClassroomProgress, isSortKey, type SortKey } from "@/lib/classroom-dashboard";
 import { WrappedCardCompact } from "@/components/WrappedCard";
 import { SubmitButton } from "@/components/SubmitButton";
 
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ rt?: string; rb?: string; joined?: string; left?: string; error?: string }>;
+  searchParams: Promise<{ rt?: string; rb?: string; cs?: string; joined?: string; left?: string; error?: string }>;
 }) {
-  const { rt = "group", rb = "rating", joined, left, error } = await searchParams;
+  const { rt = "group", rb = "rating", cs, joined, left, error } = await searchParams;
   const user = await requireUser("/");
   const membership = await getCurrentMembership(user.id);
 
@@ -32,6 +32,9 @@ export default async function HomePage({
 
   // 학교(교실) 모드의 선생님(그룹장·운영자)에게는 본인 책장 대신 학생 현황을 보여준다
   const isClassAdmin = membership.group.classroomMode && isAdmin(membership.role);
+  const classSort: SortKey = isSortKey(cs) ? cs : "no";
+  // 랭킹 탭 등 다른 쿼리는 유지하면서 정렬만 바꾸는 링크
+  const sortHref = (key: SortKey) => `/?rt=${rt}&rb=${rb}${key === "no" ? "" : `&cs=${key}`}`;
 
   const year = new Date().getFullYear();
   const [myRecords, groupFeed, months, classProgress] = await Promise.all([
@@ -79,7 +82,12 @@ export default async function HomePage({
       <div className="home-grid">
         <div>
           {isClassAdmin && classProgress ? (
-            <ClassroomBoard data={classProgress} groupName={membership.group.name} />
+            <ClassroomBoard
+              data={classProgress}
+              groupName={membership.group.name}
+              sort={classSort}
+              sortHref={sortHref}
+            />
           ) : (
             <div className="board">
               <section className="bcol">

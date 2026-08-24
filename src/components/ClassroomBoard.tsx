@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { fmtDate } from "@/lib/format";
-import type { ClassroomProgress } from "@/lib/classroom-dashboard";
+import { SORTS, sortStudents, type ClassroomProgress, type SortKey } from "@/lib/classroom-dashboard";
 
 /** 상태별 색은 앱 전체의 pill(읽을예정·독서중·완독)과 같은 색을 쓴다 */
 const C = { wish: "var(--sun-soft)", reading: "var(--mint-soft)", done: "var(--accent)" };
@@ -48,8 +49,20 @@ function ProgressBar({ wish, reading, done, max }: { wish: number; reading: numb
   );
 }
 
-export function ClassroomBoard({ data, groupName }: { data: ClassroomProgress; groupName: string }) {
-  const { students, totals, rosterCount, enteredCount, noRecordCount } = data;
+export function ClassroomBoard({
+  data,
+  groupName,
+  sort,
+  sortHref,
+}: {
+  data: ClassroomProgress;
+  groupName: string;
+  sort: SortKey;
+  /** 정렬 칩 링크 — 다른 쿼리(랭킹 탭 등)를 유지하면서 정렬만 바꾼다 */
+  sortHref: (key: SortKey) => string;
+}) {
+  const { totals, rosterCount, enteredCount, noRecordCount, weekActiveCount } = data;
+  const students = sortStudents(data.students, sort);
   const maxTotal = Math.max(...students.map((s) => s.total), 1);
 
   return (
@@ -66,7 +79,11 @@ export function ClassroomBoard({ data, groupName }: { data: ClassroomProgress; g
           🏫 학생 독서 현황 <span className="mini">『{groupName}』 · 명렬 {rosterCount}명</span>
         </h3>
         <p className="mini" style={{ margin: "0 0 12px" }}>
-          입장 <b>{enteredCount}/{rosterCount}명</b>
+          <span title="월요일부터 지금까지 기록을 남긴 학생 수">
+            📅 이번 주 활동 <b>{weekActiveCount}/{rosterCount}명</b>
+          </span>
+          {" · 입장 "}
+          <b>{enteredCount}/{rosterCount}명</b>
           {rosterCount - enteredCount > 0 && ` · 미입장 ${rosterCount - enteredCount}명`}
           {noRecordCount > 0 && ` · 입장했지만 기록 없음 ${noRecordCount}명`}
           {" · 전체 "}
@@ -82,6 +99,17 @@ export function ClassroomBoard({ data, groupName }: { data: ClassroomProgress; g
             </span>
           ))}
         </p>
+
+        {rosterCount > 0 && (
+          <p className="mini" style={{ margin: "0 0 10px", display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+            정렬
+            {(Object.keys(SORTS) as SortKey[]).map((k) => (
+              <Link key={k} href={sortHref(k)} className={`fchip ${k === sort ? "on" : ""}`} scroll={false}>
+                {SORTS[k]}
+              </Link>
+            ))}
+          </p>
+        )}
 
         {rosterCount === 0 ? (
           <p className="mini" style={{ margin: 0 }}>

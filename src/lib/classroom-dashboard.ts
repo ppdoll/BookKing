@@ -19,7 +19,32 @@ export type ClassroomProgress = {
   rosterCount: number;
   enteredCount: number;
   noRecordCount: number; // 입장했지만 아직 기록이 없는 학생
+  weekActiveCount: number; // 이번 주(월요일 00:00 KST 이후) 기록을 남긴 학생 수
 };
+
+/** 학생 표 정렬 기준 */
+export const SORTS = {
+  no: "반번호",
+  done: "완독 많은 순",
+  total: "기록 많은 순",
+  recent: "최근 활동 순",
+  idle: "도움 필요한 순",
+} as const;
+export type SortKey = keyof typeof SORTS;
+export const isSortKey = (v: string | undefined): v is SortKey => Boolean(v && v in SORTS);
+
+const KST_OFFSET = 9 * 60 * 60 * 1000;
+
+/**
+ * "이번 주"의 시작 = 한국 시간 월요일 00:00 (반환값은 UTC 기준 시각).
+ * 배포 서버는 UTC로 동작하므로 오프셋을 직접 적용해야 주 경계가 밀리지 않는다.
+ */
+function startOfWeekKst(now = new Date()) {
+  const kst = new Date(now.getTime() + KST_OFFSET);
+  const daysSinceMonday = (kst.getUTCDay() + 6) % 7; // 일요일(0) → 6
+  const mondayKst = Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate() - daysSinceMonday);
+  return new Date(mondayKst - KST_OFFSET);
+}
 
 /** 반번호 자연 정렬 — "2"가 "10"보다 앞에 오도록 */
 function compareClassNo(a: string, b: string) {
@@ -90,11 +115,47 @@ export async function getClassroomProgress(groupId: string): Promise<ClassroomPr
     { wish: 0, reading: 0, done: 0, total: 0 }
   );
 
+  const weekStart = startOfWeekKst();
+
   return {
     students,
     totals,
     rosterCount: students.length,
     enteredCount: students.filter((s) => s.entered).length,
     noRecordCount: students.filter((s) => s.entered && s.total === 0).length,
+    weekActiveCount: students.filter((s) => s.lastAt !== null && s.lastAt >= weekStart).length,
   };
+}
+
+/**
+ * 학생 표 정렬. 동점일 때는 항상 반번호 순으로 떨어뜨려 순서가 흔들리지 않게 한다.
+ * idle(도움 필요한 순)은 기록이 없거나 활동이 오래된 학생을 위로 올린다.
+ */
+export function sortStudents(students: StudentProgress[], key: SortKey): StudentProgress[] {
+  const byNo = (a: StudentProgress, b: StudentProgress) => compareClassNo(a.classNo, b.classNo);
+  const list = [...students];
+
+  switch (key) {
+    case "done":
+      return list.sort((a, b) => b.done - a.done || byNo(a, b));
+    case "total":
+      return list.sort((a, b) => b.total - a.total || byNo(a, b));
+    case "recent":
+      // 활동이 있는 학생을 최신순으로, 활동 없는 학생은 뒤로
+      return list.sort(
+        (a, b) => (b.lastAt?.getTime() ?? -1) - (a.lastAt?.getTime() ?? -1) || byNo(a, b)
+      );
+    case "idle":
+      // 미입장 → 기록 없음 → 오래된 활동 순
+      return list.sort((a, b) => {
+        const rank = (s: StudentProgress) => (!s.entered ? 0 : s.total === 0 ? 1 : 2);
+        return (
+          rank(a) - rank(b) ||
+          (a.lastAt?.getTime() ?? 0) - (b.lastAt?.getTime() ?? 0) ||
+          byNo(a, b)
+        );
+      });
+    default:
+      return list.sort(byNo);
+  }
 }
