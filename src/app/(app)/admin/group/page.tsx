@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireUser, getCurrentMembership, isOwner } from "@/lib/session";
 import { ROLE, ROLE_LABEL, type Role } from "@/lib/constants";
 import { fmtDate, fmtDateFull } from "@/lib/format";
-import { regenerateInvite, setMemberRole, transferOwnership, updateGroupOptions, removeMember, setJoinPassword, addRosterStudents, removeRosterStudent, resetRosterClaim, setGroupExpiry, deleteGroup } from "@/lib/actions/group-actions";
+import { regenerateInvite, setMemberRole, transferOwnership, updateGroupOptions, removeMember, setJoinPassword, addRosterStudents, removeRosterStudent, resetRosterClaim, setGroupExpiry, deleteGroup, setClassroomReportShare } from "@/lib/actions/group-actions";
 import { daysUntilExpiry } from "@/lib/group-expiry";
 import { restoreRecord } from "@/lib/actions/record-actions";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
@@ -20,10 +20,10 @@ export default async function AdminGroupPage({
     pw?: string; pwerr?: string; roster?: string; rosterdel?: string; rosterreset?: string;
     expon?: string; expoff?: string; experr?: string;
     icon?: string; icondel?: string; iconerr?: string;
-    delerr?: string;
+    delerr?: string; report?: string;
   }>;
 }) {
-  const { created, transferred, options, removed, pw, pwerr, roster: rosterOk, rosterdel, rosterreset, expon, expoff, experr, icon, icondel, iconerr, delerr } = await searchParams;
+  const { created, transferred, options, removed, pw, pwerr, roster: rosterOk, rosterdel, rosterreset, expon, expoff, experr, icon, icondel, iconerr, delerr, report } = await searchParams;
   const user = await requireUser("/admin/group");
   const membership = await getCurrentMembership(user.id);
   if (!membership || !isOwner(membership.role)) redirect("/");
@@ -58,6 +58,7 @@ export default async function AdminGroupPage({
   const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const inviteUrl = `${proto}://${host}/join/${group.inviteCode}`;
   const classUrl = `${proto}://${host}/class/${group.inviteCode}`;
+  const reportUrl = group.reportSlug ? `${proto}://${host}/report/${group.reportSlug}` : null;
   const expiryDays = daysUntilExpiry(group);
   // <input type="date">가 요구하는 YYYY-MM-DD (로컬 기준)
   const toDateInput = (d: Date) =>
@@ -89,6 +90,8 @@ export default async function AdminGroupPage({
       {iconerr === "format" && <div className="toast err">이미지를 읽을 수 없어요. PNG·JPG로 다시 시도해주세요.</div>}
       {iconerr === "size" && <div className="toast err">이미지가 너무 커요. 더 작은 이미지를 사용해주세요.</div>}
       {delerr === "name" && <div className="toast err">그룹 이름이 정확히 일치하지 않아 삭제하지 않았어요.</div>}
+      {report === "on" && <div className="toast">🔗 보고서 공유 링크가 만들어졌어요.</div>}
+      {report === "off" && <div className="toast">보고서 공유를 중지했어요. 기존 링크는 더 이상 열리지 않아요.</div>}
 
       <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16, alignItems: "start" }}>
         <section className="card tablewrap">
@@ -370,6 +373,47 @@ export default async function AdminGroupPage({
           </div>
         </section>
       )}
+      {group.classroomMode && (
+        <section className="card" style={{ marginTop: 16 }}>
+          <h3 style={{ margin: "0 0 6px", fontSize: 15 }}>📄 학생 독서 현황 보고서</h3>
+          <p className="mini" style={{ margin: "0 0 12px" }}>
+            반 전체 요약과 학생별 현황을 한 장으로 정리해요. 학생은 <b>별명으로만</b> 표시돼요.
+          </p>
+          <div className="fieldrow" style={{ gap: 8, marginBottom: 14 }}>
+            <a href="/admin/report" target="_blank" rel="noreferrer" className="btn sm pri">📄 보고서 열기 (인쇄·PDF)</a>
+          </div>
+
+          <div style={{ borderTop: "2px dashed var(--soft-line)", paddingTop: 12 }}>
+            <label className="mini" style={{ fontWeight: 800 }}>🔗 링크로 공유</label>
+            {group.reportSlug ? (
+              <>
+                <p className="mini" style={{ margin: "2px 0 8px" }}>
+                  공유 중이에요. <b>링크를 아는 사람만</b> 볼 수 있고 검색에는 노출되지 않아요.
+                </p>
+                <input className="input" readOnly value={reportUrl!} aria-label="보고서 공유 링크" />
+                <div className="fieldrow" style={{ gap: 8, marginTop: 8 }}>
+                  <CopyButton text={reportUrl!} />
+                  <form action={setClassroomReportShare} style={{ display: "inline" }}>
+                    <input type="hidden" name="on" value="0" />
+                    <ConfirmSubmit message="기존 링크가 즉시 무효가 돼요." className="btn sm dngr">공유 중지</ConfirmSubmit>
+                  </form>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mini" style={{ margin: "2px 0 8px" }}>
+                  학부모·교감선생님처럼 계정이 없는 분께 보여드릴 때 사용하세요.
+                </p>
+                <form action={setClassroomReportShare}>
+                  <input type="hidden" name="on" value="1" />
+                  <SubmitButton className="btn sm pri" pendingText="만드는 중…">공유 링크 만들기</SubmitButton>
+                </form>
+              </>
+            )}
+          </div>
+        </section>
+      )}
+
       {canDeleteGroup && (
         <section className="card" style={{ marginTop: 16, borderColor: "var(--danger)" }}>
           <h3 style={{ margin: "0 0 6px", fontSize: 15, color: "var(--danger)" }}>🗑 그룹 삭제</h3>

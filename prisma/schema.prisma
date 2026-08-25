@@ -87,6 +87,7 @@ model Group {
   joinPassword    String? // 교실 모드 학생 입장 비밀번호 (scrypt 해시 "salt:hash", 평문 저장 안 함)
   expiresAt       DateTime? // 만료일 — 지나면 그룹·기록·학생 계정이 영구 삭제됨 (일일 크론 + 즉시 접근 차단)
   iconVersion     String? // 그룹 아이콘 캐시 버전(해시 8자). 값이 있으면 아이콘이 등록된 상태 — 실제 이미지는 GroupIcon
+  reportSlug      String?  @unique // 학교 모드 학생 현황 보고서 공유 링크 (/report/{slug}). 값이 있으면 공유 중
   createdAt       DateTime @default(now())
 
   owner        User               @relation("GroupOwner", fields: [ownerId], references: [id])

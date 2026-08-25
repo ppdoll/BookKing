@@ -223,6 +223,30 @@ export async function removeGroupIcon() {
   redirect("/admin/group?icondel=1");
 }
 
+/**
+ * (학교 모드 그룹장·운영자) 학생 현황 보고서 공유 링크 켜기/끄기.
+ * 추측 불가능한 슬러그를 발급해 /report/{slug}로 열람하게 하고, 끄면 링크가 즉시 무효가 된다.
+ * 검색엔진에는 노출되지 않는다(robots + noindex).
+ */
+export async function setClassroomReportShare(formData: FormData) {
+  const user = await requireUser("/admin/group");
+  const membership = await getCurrentMembership(user.id);
+  if (!membership || !isAdmin(membership.role)) redirect("/");
+  if (!membership.group.classroomMode) redirect("/admin/group");
+
+  const on = formData.get("on") === "1";
+  await prisma.group.update({
+    where: { id: membership.groupId },
+    data: {
+      reportSlug: on
+        ? membership.group.reportSlug ?? randomBytes(9).toString("base64url")
+        : null,
+    },
+  });
+  revalidatePath("/admin/group");
+  redirect(`/admin/group?report=${on ? "on" : "off"}`);
+}
+
 /** (그룹장) 학교 모드 학생 입장 비밀번호 설정 — scrypt 해시로 저장 */
 export async function setJoinPassword(formData: FormData) {
   const user = await requireUser("/admin/group");
