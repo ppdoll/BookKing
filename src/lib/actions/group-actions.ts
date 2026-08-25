@@ -9,6 +9,7 @@ import { requireUser, GROUP_COOKIE, getCurrentMembership, isOwner, isAdmin } fro
 import { ROLE, INVITE_EXPIRY_DAYS } from "@/lib/constants";
 import { getSlotStatus } from "@/lib/slots";
 import { hashPassword } from "@/lib/password";
+import { deleteGroupCompletely } from "@/lib/group-expiry";
 
 /** 가입 처리 공통 — 승인제 그룹이면 신청 접수, 아니면 즉시 가입 */
 async function joinOrApply(
@@ -357,6 +358,32 @@ export async function rejectJoinRequest(formData: FormData) {
   });
   revalidatePath("/admin/joins");
   redirect("/admin/joins?rejected=1");
+}
+
+/**
+ * (그룹 생성자) 그룹 영구 삭제 — 되돌릴 수 없다.
+ * 그룹의 모든 독서 기록·멤버십·명렬이 함께 사라지고(스키마 캐스케이드),
+ * 학교 모드로 만들어진 학생 계정도 정리된다(만료 삭제와 같은 로직 재사용).
+ * 실수 방지를 위해 그룹 이름을 정확히 입력해야 실행된다.
+ */
+export async function deleteGroup(formData: FormData) {
+  const user = await requireUser("/admin/group");
+  const membership = await getCurrentMembership(user.id);
+  if (!membership || !isOwner(membership.role)) redirect("/");
+
+  const group = membership.group;
+  // 위임과 무관하게 "만든 사람"만 삭제할 수 있다 (이용권 차감 기준과 동일)
+  if (group.isPersonal || group.createdById !== user.id) redirect("/admin/group");
+
+  const typed = String(formData.get("confirmName") ?? "").trim();
+  if (typed !== group.name) redirect("/admin/group?delerr=name");
+
+  await deleteGroupCompletely(group.id);
+
+  const store = await cookies();
+  store.delete(GROUP_COOKIE);
+  revalidatePath("/", "layout");
+  redirect("/?deleted=1");
 }
 
 /** (그룹장) 그룹원 내보내기 */

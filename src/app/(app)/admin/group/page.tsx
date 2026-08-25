@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireUser, getCurrentMembership, isOwner } from "@/lib/session";
 import { ROLE, ROLE_LABEL, type Role } from "@/lib/constants";
 import { fmtDate, fmtDateFull } from "@/lib/format";
-import { regenerateInvite, setMemberRole, transferOwnership, updateGroupOptions, removeMember, setJoinPassword, addRosterStudents, removeRosterStudent, resetRosterClaim, setGroupExpiry } from "@/lib/actions/group-actions";
+import { regenerateInvite, setMemberRole, transferOwnership, updateGroupOptions, removeMember, setJoinPassword, addRosterStudents, removeRosterStudent, resetRosterClaim, setGroupExpiry, deleteGroup } from "@/lib/actions/group-actions";
 import { daysUntilExpiry } from "@/lib/group-expiry";
 import { restoreRecord } from "@/lib/actions/record-actions";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
@@ -20,9 +20,10 @@ export default async function AdminGroupPage({
     pw?: string; pwerr?: string; roster?: string; rosterdel?: string; rosterreset?: string;
     expon?: string; expoff?: string; experr?: string;
     icon?: string; icondel?: string; iconerr?: string;
+    delerr?: string;
   }>;
 }) {
-  const { created, transferred, options, removed, pw, pwerr, roster: rosterOk, rosterdel, rosterreset, expon, expoff, experr, icon, icondel, iconerr } = await searchParams;
+  const { created, transferred, options, removed, pw, pwerr, roster: rosterOk, rosterdel, rosterreset, expon, expoff, experr, icon, icondel, iconerr, delerr } = await searchParams;
   const user = await requireUser("/admin/group");
   const membership = await getCurrentMembership(user.id);
   if (!membership || !isOwner(membership.role)) redirect("/");
@@ -30,7 +31,7 @@ export default async function AdminGroupPage({
 
   // 그룹 정보는 getCurrentMembership이 include로 이미 로드함 — 재조회 불필요
   const group = membership.group;
-  const [members, deleted, roster] = await Promise.all([
+  const [members, deleted, roster, activeRecords] = await Promise.all([
     prisma.groupMember.findMany({
       where: { groupId: membership.groupId },
       include: { user: { select: { id: true, name: true } } },
@@ -46,7 +47,11 @@ export default async function AdminGroupPage({
       where: { groupId: membership.groupId },
       orderBy: { classNo: "asc" },
     }),
+    prisma.readingRecord.count({ where: { groupId: membership.groupId, deletedAt: null } }),
   ]);
+  // 그룹은 "만든 사람"만 삭제할 수 있다 (위임과 무관 — 이용권 차감 기준과 동일)
+  const canDeleteGroup = group.createdById === user.id;
+  const claimedStudents = roster.filter((r) => r.claimedByUserId).length;
 
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
@@ -83,6 +88,7 @@ export default async function AdminGroupPage({
       {icondel && <div className="toast">그룹 아이콘을 삭제했어요. 기본 아이콘으로 돌아가요.</div>}
       {iconerr === "format" && <div className="toast err">이미지를 읽을 수 없어요. PNG·JPG로 다시 시도해주세요.</div>}
       {iconerr === "size" && <div className="toast err">이미지가 너무 커요. 더 작은 이미지를 사용해주세요.</div>}
+      {delerr === "name" && <div className="toast err">그룹 이름이 정확히 일치하지 않아 삭제하지 않았어요.</div>}
 
       <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16, alignItems: "start" }}>
         <section className="card tablewrap">
@@ -362,6 +368,45 @@ export default async function AdminGroupPage({
               )}
             </div>
           </div>
+        </section>
+      )}
+      {canDeleteGroup && (
+        <section className="card" style={{ marginTop: 16, borderColor: "var(--danger)" }}>
+          <h3 style={{ margin: "0 0 6px", fontSize: 15, color: "var(--danger)" }}>🗑 그룹 삭제</h3>
+          <p className="mini" style={{ margin: "0 0 10px" }}>
+            『{group.name}』과 <b>모든 독서 기록이 영구 삭제</b>돼요. 되돌릴 수 없어요.
+          </p>
+          <ul className="mini" style={{ margin: "0 0 12px", paddingLeft: 18, lineHeight: 1.8 }}>
+            <li>독서 기록 <b>{activeRecords}건</b>{deleted.length > 0 && ` (+ 삭제된 글 ${deleted.length}건)`}</li>
+            <li>그룹원 <b>{members.length}명</b>의 이 그룹 소속 (계정 자체는 유지돼요)</li>
+            {group.classroomMode && (
+              <li>
+                명렬 <b>{roster.length}명</b>
+                {claimedStudents > 0 && (
+                  <> · 이 반에서만 쓰던 <b>학생 계정 {claimedStudents}개도 함께 삭제</b>돼요</>
+                )}
+              </li>
+            )}
+            <li>사용 중이던 <b>이용권 1개가 반환</b>돼요</li>
+          </ul>
+          <form action={deleteGroup}>
+            <label className="mini" style={{ fontWeight: 800 }}>
+              확인을 위해 그룹 이름 <b>{group.name}</b> 을(를) 그대로 입력하세요
+            </label>
+            <div className="fieldrow" style={{ gap: 6, marginTop: 4 }}>
+              <input
+                className="input"
+                name="confirmName"
+                placeholder={group.name}
+                autoComplete="off"
+                required
+                style={{ flex: 1, maxWidth: 260 }}
+              />
+              <ConfirmSubmit message="정말 삭제할까요? 되돌릴 수 없어요." className="btn sm dngr">
+                그룹 영구 삭제
+              </ConfirmSubmit>
+            </div>
+          </form>
         </section>
       )}
     </>

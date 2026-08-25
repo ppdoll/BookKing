@@ -19,9 +19,9 @@ import { SubmitButton } from "@/components/SubmitButton";
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ rt?: string; rb?: string; cs?: string; joined?: string; left?: string; error?: string }>;
+  searchParams: Promise<{ rt?: string; rb?: string; cs?: string; joined?: string; left?: string; deleted?: string; error?: string }>;
 }) {
-  const { rt = "group", rb = "rating", cs, joined, left, error } = await searchParams;
+  const { rt = "group", rb = "rating", cs, joined, left, deleted, error } = await searchParams;
   const user = await requireUser("/");
   const membership = await getCurrentMembership(user.id);
 
@@ -73,6 +73,7 @@ export default async function HomePage({
     <>
       {joined && <div className="toast">🎉 『{membership.group.name}』 가입 완료! {viewOnly ? "그룹장의 기록을 구경해보세요." : "첫 책을 등록해보세요."}</div>}
       {left && <div className="toast">그룹에서 나왔어요.</div>}
+      {deleted && <div className="toast">🗑 그룹이 삭제됐어요. 사용하던 이용권 1개가 반환됐어요.</div>}
       {error && <div className="toast err">{error}</div>}
       {viewOnly && (
         <div className="toast" style={{ background: "var(--sun-soft)" }}>
