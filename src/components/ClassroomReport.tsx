@@ -152,7 +152,6 @@ export function ClassroomReport({
                         {list.map((b, i) => (
                           <span key={`${b.title}-${i}`}>
                             {i > 0 && " · "}
-                            {b.isPrivate && "🔒 "}
                             {b.title}
                             {/* 완독한 책은 언제 다 읽었는지 함께 표시 */}
                             {key === STATUS.DONE && b.endDate && (

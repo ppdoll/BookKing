@@ -12,7 +12,7 @@ export default async function AdminReportPage() {
   const membership = await getCurrentMembership(user.id);
   if (!membership || !isAdmin(membership.role) || !membership.group.classroomMode) redirect("/");
 
-  const data = await getClassroomProgress(membership.groupId, { includePrivate: true });
+  const data = await getClassroomProgress(membership.groupId);
 
   return (
     <div style={{ maxWidth: 820, margin: "0 auto" }}>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser, isAdmin } from "@/lib/session";
-import { canViewRecord } from "@/lib/visibility";
+import { canViewPrivateNotes } from "@/lib/visibility";
 import { isExpired } from "@/lib/group-expiry";
 import { isSiteAdminUser } from "@/lib/slots";
 import { setBookAddonUrl } from "@/lib/actions/slot-actions";
@@ -36,8 +36,11 @@ export default async function RecordDetailPage({
     where: { userId_groupId: { userId: user.id, groupId: record.groupId } },
   });
   if (!membership) redirect("/");
-  // 비공개 기록은 본인과 그룹장·운영자만 열람 가능
-  if (!canViewRecord(record, { viewerId: user.id, viewerIsGroupAdmin: isAdmin(membership.role) })) redirect("/");
+  // 비공개 기록이어도 책 정보·상태·별점은 그대로 보이고, 문장·느낀 점만 가린다
+  const showNotes = canViewPrivateNotes(record, {
+    viewerId: user.id,
+    viewerIsGroupAdmin: isAdmin(membership.role),
+  });
 
   const days = readingDays(record.startDate, record.endDate);
   const mbti = record.recommendMbti
@@ -130,7 +133,13 @@ export default async function RecordDetailPage({
           </>
         )}
 
-        {record.memorableQuote && (
+        {!showNotes && (record.memorableQuote || record.review) && (
+          <p className="mini" style={{ marginTop: 14, padding: "8px 12px", background: "var(--chip)", borderRadius: 10 }}>
+            🔒 이 기록의 <b>문장과 느낀 점</b>은 비공개예요 — 작성자와 그룹장·운영자만 볼 수 있어요.
+          </p>
+        )}
+
+        {showNotes && record.memorableQuote && (
           <>
             <p className="flabel">기억에 남는 문장</p>
             <blockquote
@@ -144,7 +153,7 @@ export default async function RecordDetailPage({
           </>
         )}
 
-        {record.review && (
+        {showNotes && record.review && (
           <>
             <p className="flabel">읽고 느낀 점</p>
             <p style={{ margin: 0, fontSize: 14, whiteSpace: "pre-wrap" }}>{record.review}</p>

@@ -378,8 +378,6 @@ export default async function AdminGroupPage({
           <h3 style={{ margin: "0 0 6px", fontSize: 15 }}>📄 학생 독서 현황 보고서</h3>
           <p className="mini" style={{ margin: "0 0 12px" }}>
             반 전체 요약과 학생별 현황을 한 장으로 정리해요. 학생은 <b>별명으로만</b> 표시돼요.
-            <br />
-            선생님이 여는 보고서에는 🔒 비공개 기록도 포함되지만, <b>공유 링크에서는 비공개 기록이 빠져요.</b>
           </p>
           <div className="fieldrow" style={{ gap: 8, marginBottom: 14 }}>
             <a href="/admin/report" target="_blank" rel="noreferrer" className="btn sm pri">📄 보고서 열기 (인쇄·PDF)</a>

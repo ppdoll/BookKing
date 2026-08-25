@@ -28,7 +28,7 @@ export type WrappedStats = {
  * 여러 그룹에 중복 등록된 책은 bookId로 합쳐 한 권으로 계산한다.
  */
 export const getWrappedStats = cache(
-  async (userId: string, year: number, includePrivate = false): Promise<WrappedStats> => {
+  async (userId: string, year: number): Promise<WrappedStats> => {
     const start = new Date(year, 0, 1);
     const end = new Date(year + 1, 0, 1);
     const [user, records] = await Promise.all([
@@ -39,8 +39,6 @@ export const getWrappedStats = cache(
           status: STATUS.DONE,
           deletedAt: null,
           endDate: { gte: start, lt: end },
-          // 공개·그룹 공유 카드에서는 비공개 기록 제외 (본인 결산 화면에서만 포함)
-          ...(includePrivate ? {} : { isPrivate: false }),
         },
         select: {
           bookId: true,
