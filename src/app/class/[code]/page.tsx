@@ -85,32 +85,68 @@ export default async function ClassEntryPage({
               <b>『{group.name}』</b> 반에 입장해요 🏫
             </p>
             <p className="mini" style={{ margin: "0 0 14px" }}>
-              선생님이 나눠준 <b>반번호</b>와 <b>비밀번호</b>를 입력하세요.
+<b>별명</b>과 <b>내 비밀번호</b>로 들어와요.
             </p>
-            {error && <div className="toast err" style={{ marginBottom: 12 }}>반번호나 비밀번호가 맞지 않아요.</div>}
+            {error === "name" && (
+              <div className="toast err" style={{ marginBottom: 12 }}>별명이나 비밀번호가 맞지 않아요.</div>
+            )}
+            {error === "first" && (
+              <div className="toast err" style={{ marginBottom: 12 }}>반번호나 반 비밀번호가 맞지 않아요.</div>
+            )}
+
+            {/* 이미 비밀번호를 정한 학생 — 별명 + 개인 비밀번호 */}
             <form
               action={async (formData: FormData) => {
                 "use server";
-                const classNo = String(formData.get("classNo") ?? "").trim();
+                const nickname = String(formData.get("nickname") ?? "").trim();
                 const password = String(formData.get("password") ?? "");
                 try {
-                  await signIn("classroom", { code, classNo, password, redirectTo: "/" });
+                  await signIn("classroom-name", { code, nickname, password, redirectTo: "/" });
                 } catch (e) {
-                  if (e instanceof AuthError) {
-                    redirect(`/class/${code}?error=1`);
-                  }
+                  if (e instanceof AuthError) redirect(`/class/${code}?error=name`);
                   throw e;
                 }
               }}
             >
               <div style={{ display: "grid", gap: 8 }}>
-                <input className="input" name="classNo" placeholder="반번호 (예: 15)" required />
-                <input className="input" name="password" type="password" placeholder="비밀번호" required />
-                <SubmitButton className="btn pri" pendingText="입장하는 중… 🎉">
-                  <span style={{ width: "100%", textAlign: "center" }}>입장하기</span>
+                <input className="input" name="nickname" placeholder="내 별명" required autoFocus />
+                <input className="input" name="password" type="password" placeholder="내 비밀번호" required />
+                <SubmitButton className="btn pri" pendingText="들어가는 중… 🎉">
+                  <span style={{ width: "100%", textAlign: "center" }}>들어가기</span>
                 </SubmitButton>
               </div>
             </form>
+
+            {/* 처음이거나 비밀번호를 잊은 학생 — 반번호 + 반 비밀번호 */}
+            <details style={{ marginTop: 16, borderTop: "2px dashed var(--soft-line)", paddingTop: 12 }}>
+              <summary className="mini" style={{ cursor: "pointer", fontWeight: 800, color: "var(--accent)" }}>
+                처음 들어오거나 비밀번호를 잊었어요
+              </summary>
+              <p className="mini" style={{ margin: "8px 0" }}>
+                선생님이 알려준 <b>반번호</b>와 <b>반 비밀번호</b>로 들어오면, 내 비밀번호를 새로 정할 수 있어요.
+              </p>
+              <form
+                action={async (formData: FormData) => {
+                  "use server";
+                  const classNo = String(formData.get("classNo") ?? "").trim();
+                  const password = String(formData.get("password") ?? "");
+                  try {
+                    await signIn("classroom", { code, classNo, password, redirectTo: "/" });
+                  } catch (e) {
+                    if (e instanceof AuthError) redirect(`/class/${code}?error=first`);
+                    throw e;
+                  }
+                }}
+              >
+                <div style={{ display: "grid", gap: 8 }}>
+                  <input className="input" name="classNo" placeholder="반번호 (예: 15)" required />
+                  <input className="input" name="password" type="password" placeholder="선생님이 알려준 반 비밀번호" required />
+                  <SubmitButton className="btn" pendingText="확인 중…">
+                    <span style={{ width: "100%", textAlign: "center" }}>반번호로 들어가기</span>
+                  </SubmitButton>
+                </div>
+              </form>
+            </details>
           </>
         )}
       </div>

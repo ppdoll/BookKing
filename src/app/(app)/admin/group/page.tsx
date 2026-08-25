@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireUser, getCurrentMembership, isOwner } from "@/lib/session";
 import { ROLE, ROLE_LABEL, type Role } from "@/lib/constants";
 import { fmtDate, fmtDateFull } from "@/lib/format";
-import { regenerateInvite, setMemberRole, transferOwnership, updateGroupOptions, removeMember, setJoinPassword, addRosterStudents, removeRosterStudent, resetRosterClaim, setGroupExpiry, deleteGroup, setClassroomReportShare } from "@/lib/actions/group-actions";
+import { regenerateInvite, setMemberRole, transferOwnership, updateGroupOptions, removeMember, setJoinPassword, addRosterStudents, removeRosterStudent, resetRosterClaim, resetStudentPassword, setGroupExpiry, deleteGroup, setClassroomReportShare } from "@/lib/actions/group-actions";
 import { daysUntilExpiry } from "@/lib/group-expiry";
 import { restoreRecord } from "@/lib/actions/record-actions";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
@@ -20,10 +20,10 @@ export default async function AdminGroupPage({
     pw?: string; pwerr?: string; roster?: string; rosterdel?: string; rosterreset?: string;
     expon?: string; expoff?: string; experr?: string;
     icon?: string; icondel?: string; iconerr?: string;
-    delerr?: string; report?: string;
+    delerr?: string; report?: string; pwreset?: string;
   }>;
 }) {
-  const { created, transferred, options, removed, pw, pwerr, roster: rosterOk, rosterdel, rosterreset, expon, expoff, experr, icon, icondel, iconerr, delerr, report } = await searchParams;
+  const { created, transferred, options, removed, pw, pwerr, roster: rosterOk, rosterdel, rosterreset, expon, expoff, experr, icon, icondel, iconerr, delerr, report, pwreset } = await searchParams;
   const user = await requireUser("/admin/group");
   const membership = await getCurrentMembership(user.id);
   if (!membership || !isOwner(membership.role)) redirect("/");
@@ -92,6 +92,7 @@ export default async function AdminGroupPage({
       {delerr === "name" && <div className="toast err">그룹 이름이 정확히 일치하지 않아 삭제하지 않았어요.</div>}
       {report === "on" && <div className="toast">🔗 보고서 공유 링크가 만들어졌어요.</div>}
       {report === "off" && <div className="toast">보고서 공유를 중지했어요. 기존 링크는 더 이상 열리지 않아요.</div>}
+      {pwreset && <div className="toast">🔑 학생 비밀번호를 초기화했어요. 그 학생은 반번호로 다시 들어와 새로 정하면 돼요.</div>}
 
       <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16, alignItems: "start" }}>
         <section className="card tablewrap">
@@ -338,7 +339,7 @@ export default async function AdminGroupPage({
               ) : (
                 <table className="mt">
                   <thead>
-                    <tr><th style={{ width: 70 }}>반번호</th><th>별명</th><th>상태</th><th style={{ width: 150 }}>관리</th></tr>
+                    <tr><th style={{ width: 70 }}>반번호</th><th>별명</th><th>상태</th><th style={{ width: 210 }}>관리</th></tr>
                   </thead>
                   <tbody>
                     {roster.map((s) => (
@@ -349,13 +350,22 @@ export default async function AdminGroupPage({
                           <span className={`pill ${s.claimedByUserId ? "p-done" : "p-ghost"}`}>
                             {s.claimedByUserId ? "입장함" : "대기"}
                           </span>
+                          {s.claimedByUserId && !s.password && (
+                            <span className="pill p-wish" style={{ marginLeft: 4 }}>비번 미설정</span>
+                          )}
                         </td>
                         <td>
                           <span className="fieldrow" style={{ gap: 6 }}>
+                            {s.claimedByUserId && s.password && (
+                              <form action={resetStudentPassword} style={{ display: "inline" }}>
+                                <input type="hidden" name="studentId" value={s.id} />
+                                <ConfirmSubmit message={`${s.nickname} 비밀번호 초기화?`} className="btn sm">🔑 비번 초기화</ConfirmSubmit>
+                              </form>
+                            )}
                             {s.claimedByUserId && (
                               <form action={resetRosterClaim} style={{ display: "inline" }}>
                                 <input type="hidden" name="studentId" value={s.id} />
-                                <ConfirmSubmit message={`${s.classNo}번 배정 초기화?`} className="btn sm">초기화</ConfirmSubmit>
+                                <ConfirmSubmit message={`${s.classNo}번 배정 초기화?`} className="btn sm">배정 초기화</ConfirmSubmit>
                               </form>
                             )}
                             <form action={removeRosterStudent} style={{ display: "inline" }}>

@@ -247,6 +247,32 @@ export async function setClassroomReportShare(formData: FormData) {
   redirect(`/admin/group?report=${on ? "on" : "off"}`);
 }
 
+/**
+ * (학생 본인) 개인 비밀번호 설정 — 최초 입장 후 한 번 정하면
+ * 다음부터는 별명 + 이 비밀번호로 들어올 수 있다.
+ */
+export async function setStudentPassword(formData: FormData) {
+  const user = await requireUser("/class/set-password");
+
+  const entry = await prisma.classroomStudent.findUnique({
+    where: { claimedByUserId: user.id },
+    include: { group: { select: { classroomMode: true } } },
+  });
+  if (!entry || !entry.group.classroomMode) redirect("/");
+
+  const pw = String(formData.get("password") ?? "");
+  const pw2 = String(formData.get("password2") ?? "");
+  if (pw.length < 4) redirect("/class/set-password?error=short");
+  if (pw !== pw2) redirect("/class/set-password?error=mismatch");
+
+  await prisma.classroomStudent.update({
+    where: { id: entry.id },
+    data: { password: hashPassword(pw) },
+  });
+  revalidatePath("/", "layout");
+  redirect("/?pwset=1");
+}
+
 /** (그룹장) 학교 모드 학생 입장 비밀번호 설정 — scrypt 해시로 저장 */
 export async function setJoinPassword(formData: FormData) {
   const user = await requireUser("/admin/group");
@@ -305,6 +331,21 @@ export async function removeRosterStudent(formData: FormData) {
   await prisma.classroomStudent.delete({ where: { id } });
   revalidatePath("/admin/group");
   redirect("/admin/group?rosterdel=1");
+}
+
+/** (그룹장) 학생 개인 비밀번호 초기화 — 학생이 다시 반번호로 들어와 새로 정할 수 있게 한다 */
+export async function resetStudentPassword(formData: FormData) {
+  const user = await requireUser("/admin/group");
+  const membership = await getCurrentMembership(user.id);
+  if (!membership || !isOwner(membership.role)) redirect("/");
+
+  const id = String(formData.get("studentId") ?? "");
+  const entry = await prisma.classroomStudent.findUnique({ where: { id } });
+  if (!entry || entry.groupId !== membership.groupId) redirect("/admin/group");
+
+  await prisma.classroomStudent.update({ where: { id }, data: { password: null } });
+  revalidatePath("/admin/group");
+  redirect("/admin/group?pwreset=1");
 }
 
 /** (그룹장) 명렬 배정 초기화 — 잘못 입장한 반번호를 다시 입장 가능하게 (기존 학생 계정은 유지) */

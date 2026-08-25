@@ -101,6 +101,48 @@ providers.push(
   })
 );
 
+// 학교(교실) 모드 재입장 — 최초 입장 때 학생이 직접 정한 개인 비밀번호로 로그인한다.
+// (최초 입장·비밀번호 분실 시에는 위의 "classroom" 경로로 반번호+반 비밀번호를 쓴다)
+providers.push(
+  Credentials({
+    id: "classroom-name",
+    name: "학교(반) 재입장",
+    credentials: {
+      code: { label: "그룹 코드" },
+      nickname: { label: "별명" },
+      password: { label: "비밀번호" },
+    },
+    async authorize(credentials) {
+      const code = String(credentials?.code ?? "").trim();
+      const nickname = String(credentials?.nickname ?? "").trim();
+      const password = String(credentials?.password ?? "");
+      if (!code || !nickname || !password) return null;
+
+      const group = await prisma.group.findUnique({ where: { inviteCode: code } });
+      if (!group || !group.classroomMode) return null;
+      if (group.expiresAt && group.expiresAt <= new Date()) return null;
+
+      // 같은 반에 같은 별명이 있을 수 있으므로, 별명으로 후보를 모은 뒤 비밀번호로 판별한다
+      const candidates = await prisma.classroomStudent.findMany({
+        where: {
+          groupId: group.id,
+          nickname,
+          claimedByUserId: { not: null }, // 아직 입장 전이면 반번호 경로로 들어와야 함
+          password: { not: null }, // 비밀번호를 아직 정하지 않았어도 반번호 경로
+        },
+      });
+      if (candidates.length === 0) return null;
+
+      const { verifyPassword } = await import("@/lib/password");
+      const matched = candidates.filter((c) => verifyPassword(password, c.password));
+      // 별명도 비밀번호도 같은 학생이 둘 이상이면 누구인지 확정할 수 없어 거부한다
+      if (matched.length !== 1) return null;
+
+      return prisma.user.findUnique({ where: { id: matched[0].claimedByUserId! } });
+    },
+  })
+);
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },

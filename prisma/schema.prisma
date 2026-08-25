@@ -108,8 +108,9 @@ model ClassroomStudent {
   id              String   @id @default(cuid())
   groupId         String
   classNo         String // 반번호 (문자 허용: "15", "2반 3번" 등)
-  nickname        String // 별명 (실명 금지 — 가명 처리)
+  nickname        String // 별명 (실명 금지 — 가명 처리). 같은 반에 중복될 수 있어 로그인은 별명+비밀번호로 판별한다
   claimedByUserId String?  @unique // 입장 완료 시 배정된 학생 계정
+  password        String? // 학생 개인 비밀번호(scrypt "salt:hash"). 최초 입장 후 본인이 설정하며, 다음부터는 별명+이 비밀번호로 로그인
   createdAt       DateTime @default(now())
 
   group     Group @relation(fields: [groupId], references: [id], onDelete: Cascade)

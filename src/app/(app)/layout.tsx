@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { requireUser, getMemberships, getCurrentMembership, isAdmin } from "@/lib/session";
 import { isSiteAdminUser } from "@/lib/slots";
 import { daysUntilExpiry, EXPIRY_WARN_DAYS } from "@/lib/group-expiry";
+import { needsStudentPassword } from "@/lib/student";
 import { TopBar } from "@/components/TopBar";
 
 /**
@@ -27,6 +29,9 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
+  // 아직 개인 비밀번호를 정하지 않은 학생은 먼저 설정하도록 안내
+  if (await needsStudentPassword(user.id)) redirect("/class/set-password");
+
   const memberships = await getMemberships(user.id);
   const current = await getCurrentMembership(user.id);
   const isSiteAdmin = isSiteAdminUser(user);
