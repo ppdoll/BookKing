@@ -364,26 +364,31 @@ export async function rejectJoinRequest(formData: FormData) {
  * (그룹 생성자) 그룹 영구 삭제 — 되돌릴 수 없다.
  * 그룹의 모든 독서 기록·멤버십·명렬이 함께 사라지고(스키마 캐스케이드),
  * 학교 모드로 만들어진 학생 계정도 정리된다(만료 삭제와 같은 로직 재사용).
+ *
+ * 권한은 위임과 무관하게 "만든 사람"(createdById) 기준 — 이용권 차감 기준과 같다.
+ * 덕분에 그룹장을 위임해 그룹 관리에 못 들어가는 상태에서도
+ * 이용권 페이지에서 자기가 만든 그룹을 정리할 수 있다.
  * 실수 방지를 위해 그룹 이름을 정확히 입력해야 실행된다.
  */
 export async function deleteGroup(formData: FormData) {
-  const user = await requireUser("/admin/group");
-  const membership = await getCurrentMembership(user.id);
-  if (!membership || !isOwner(membership.role)) redirect("/");
+  const backTo = String(formData.get("backTo") ?? "/slots");
+  const user = await requireUser(backTo);
+  const groupId = String(formData.get("groupId") ?? "");
 
-  const group = membership.group;
-  // 위임과 무관하게 "만든 사람"만 삭제할 수 있다 (이용권 차감 기준과 동일)
-  if (group.isPersonal || group.createdById !== user.id) redirect("/admin/group");
+  const group = await prisma.group.findUnique({ where: { id: groupId } });
+  if (!group || group.isPersonal || group.createdById !== user.id) redirect(backTo);
 
   const typed = String(formData.get("confirmName") ?? "").trim();
-  if (typed !== group.name) redirect("/admin/group?delerr=name");
+  if (typed !== group.name) redirect(`${backTo}?delerr=name`);
 
   await deleteGroupCompletely(group.id);
 
+  // 방금 지운 그룹을 보고 있었다면 선택을 비워 다음 그룹으로 넘어가게 한다
   const store = await cookies();
-  store.delete(GROUP_COOKIE);
+  if (store.get(GROUP_COOKIE)?.value === group.id) store.delete(GROUP_COOKIE);
+
   revalidatePath("/", "layout");
-  redirect("/?deleted=1");
+  redirect(`${backTo}?deleted=1`);
 }
 
 /** (그룹장) 그룹원 내보내기 */

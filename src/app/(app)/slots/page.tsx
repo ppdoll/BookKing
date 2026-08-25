@@ -5,16 +5,18 @@ import { getSlotStatus } from "@/lib/slots";
 import { fmtDateFull } from "@/lib/format";
 import { redeemCoupon, requestSlots } from "@/lib/actions/slot-actions";
 import { SubmitButton } from "@/components/SubmitButton";
+import { ConfirmSubmit } from "@/components/ConfirmSubmit";
+import { deleteGroup } from "@/lib/actions/group-actions";
 
 export default async function SlotsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; redeemed?: string; requested?: string }>;
+  searchParams: Promise<{ error?: string; redeemed?: string; requested?: string; deleted?: string; delerr?: string }>;
 }) {
-  const { error, redeemed, requested } = await searchParams;
+  const { error, redeemed, requested, deleted, delerr } = await searchParams;
   const user = await requireUser("/slots");
 
-  const [slots, requests] = await Promise.all([
+  const [slots, requests, myGroups] = await Promise.all([
     getSlotStatus(user.id),
     prisma.slotRequest.findMany({
       where: { userId: user.id },
@@ -23,6 +25,16 @@ export default async function SlotsPage({
       },
       orderBy: { createdAt: "desc" },
       take: 10,
+    }),
+    // 내가 만든 그룹 — 이용권을 쓰고 있는 대상이자, 여기서 정리(삭제)할 수 있는 목록
+    prisma.group.findMany({
+      where: { createdById: user.id, isPersonal: false },
+      select: {
+        id: true, name: true, classroomMode: true, ownerId: true,
+        owner: { select: { name: true } },
+        _count: { select: { members: true, records: true } },
+      },
+      orderBy: { createdAt: "asc" },
     }),
   ]);
   const hasPending = requests.some((r) => r.status === "PENDING");
@@ -37,6 +49,8 @@ export default async function SlotsPage({
       {error && <div className="toast err">{error}</div>}
       {redeemed && <div className="toast">🎉 쿠폰 사용 완료! 이용권 {redeemed}개가 지급됐어요.</div>}
       {requested && <div className="toast">📨 요청이 접수됐어요. 운영자가 확인하면 알려드릴게요 (이 페이지에서 확인).</div>}
+      {deleted && <div className="toast">🗑 그룹이 삭제됐어요. 이용권 1개가 반환됐어요.</div>}
+      {delerr === "name" && <div className="toast err">그룹 이름이 정확히 일치하지 않아 삭제하지 않았어요.</div>}
 
       <section className="card" style={{ marginBottom: 16 }}>
         <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>보유 현황</h3>
@@ -54,6 +68,53 @@ export default async function SlotsPage({
           <p className="mini" style={{ margin: "10px 0 0" }}>
             <Link href="/groups/new" style={{ textDecoration: "underline", fontWeight: 700 }}>🌱 새 그룹 만들러 가기</Link>
           </p>
+        )}
+      </section>
+
+      <section className="card" style={{ marginBottom: 16 }}>
+        <h3 style={{ margin: "0 0 6px", fontSize: 15 }}>
+          🌱 내가 만든 그룹 <span className="mini">{myGroups.length}개 · 이용권 {myGroups.length}개 사용 중</span>
+        </h3>
+        <p className="mini" style={{ margin: "0 0 12px" }}>
+          더 이상 쓰지 않는 그룹을 삭제하면 <b>이용권이 반환</b>돼요. 그룹장을 위임한 그룹도 만든 사람인 내가 정리할 수 있어요.
+        </p>
+        {myGroups.length === 0 ? (
+          <p className="mini" style={{ margin: 0 }}>아직 만든 그룹이 없어요.</p>
+        ) : (
+          myGroups.map((g) => (
+            <div key={g.id} style={{ borderTop: "2px dashed var(--soft-line)", paddingTop: 12, marginTop: 12 }}>
+              <p style={{ margin: "0 0 4px", fontSize: 14 }}>
+                <b>{g.name}</b>
+                {g.classroomMode && <span className="pill p-read" style={{ marginLeft: 6 }}>🏫 학교</span>}
+                {g.ownerId !== user.id && (
+                  <span className="pill p-ghost" style={{ marginLeft: 6 }}>위임함 · 현재 그룹장 {g.owner.name}</span>
+                )}
+              </p>
+              <p className="mini" style={{ margin: "0 0 8px" }}>
+                그룹원 {g._count.members}명 · 독서 기록 {g._count.records}건
+              </p>
+              <form action={deleteGroup}>
+                <input type="hidden" name="groupId" value={g.id} />
+                <input type="hidden" name="backTo" value="/slots" />
+                <div className="fieldrow" style={{ gap: 6 }}>
+                  <input
+                    className="input"
+                    name="confirmName"
+                    placeholder={`삭제하려면 "${g.name}" 입력`}
+                    autoComplete="off"
+                    required
+                    style={{ flex: 1, minWidth: 180, fontSize: 12.5 }}
+                  />
+                  <ConfirmSubmit
+                    message={`『${g.name}』의 기록 ${g._count.records}건이 영구 삭제돼요.`}
+                    className="btn sm dngr"
+                  >
+                    삭제
+                  </ConfirmSubmit>
+                </div>
+              </form>
+            </div>
+          ))
         )}
       </section>
 

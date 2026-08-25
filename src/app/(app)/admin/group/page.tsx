@@ -390,6 +390,8 @@ export default async function AdminGroupPage({
             <li>사용 중이던 <b>이용권 1개가 반환</b>돼요</li>
           </ul>
           <form action={deleteGroup}>
+            <input type="hidden" name="groupId" value={group.id} />
+            <input type="hidden" name="backTo" value="/" />
             <label className="mini" style={{ fontWeight: 800 }}>
               확인을 위해 그룹 이름 <b>{group.name}</b> 을(를) 그대로 입력하세요
             </label>
