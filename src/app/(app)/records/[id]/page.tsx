@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/session";
+import { requireUser, isAdmin } from "@/lib/session";
+import { canViewRecord } from "@/lib/visibility";
 import { isExpired } from "@/lib/group-expiry";
 import { isSiteAdminUser } from "@/lib/slots";
 import { setBookAddonUrl } from "@/lib/actions/slot-actions";
@@ -35,6 +36,8 @@ export default async function RecordDetailPage({
     where: { userId_groupId: { userId: user.id, groupId: record.groupId } },
   });
   if (!membership) redirect("/");
+  // 비공개 기록은 본인과 그룹장·운영자만 열람 가능
+  if (!canViewRecord(record, { viewerId: user.id, viewerIsGroupAdmin: isAdmin(membership.role) })) redirect("/");
 
   const days = readingDays(record.startDate, record.endDate);
   const mbti = record.recommendMbti
@@ -46,7 +49,10 @@ export default async function RecordDetailPage({
     <div style={{ maxWidth: 680 }}>
       <div className="page-h">
         <h1>📖 독서 기록</h1>
-        <span className="mini">『{record.group.name}』 · {record.user.name}</span>
+        <span className="mini">
+          『{record.group.name}』 · {record.user.name}
+          {record.isPrivate && <span className="pill p-ghost" style={{ marginLeft: 6 }}>🔒 비공개</span>}
+        </span>
       </div>
       <div className="card">
         <div style={{ display: "flex", gap: 16 }}>

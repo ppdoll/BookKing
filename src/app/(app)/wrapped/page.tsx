@@ -20,7 +20,7 @@ export default async function WrappedPage({
     yearRaw && /^\d{4}$/.test(yearRaw) ? Math.min(thisYear, Math.max(2000, Number(yearRaw))) : thisYear;
 
   const [stats, card, memberships, isStudent] = await Promise.all([
-    getWrappedStats(user.id, year),
+    getWrappedStats(user.id, year, true), // 본인 화면이라 비공개 포함
     getCardState(user.id, year),
     getMemberships(user.id),
     isClassroomStudent(user.id),

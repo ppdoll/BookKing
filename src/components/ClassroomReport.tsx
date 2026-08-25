@@ -1,4 +1,4 @@
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtDateFull } from "@/lib/format";
 import { STATUS } from "@/lib/constants";
 import type { ClassroomProgress } from "@/lib/classroom-dashboard";
 
@@ -137,8 +137,8 @@ export function ClassroomReport({
                     <b>{s.classNo}번 {s.nickname}</b> <span className="mini">{s.total}권</span>
                   </p>
                   {groupsOfBooks.map(({ key, label, bg }) => {
-                    const titles = s.books.filter((b) => b.status === key).map((b) => b.title);
-                    if (titles.length === 0) return null;
+                    const list = s.books.filter((b) => b.status === key);
+                    if (list.length === 0) return null;
                     return (
                       <p className="mini" key={key} style={{ margin: "2px 0 0", lineHeight: 1.7 }}>
                         <span
@@ -147,9 +147,19 @@ export function ClassroomReport({
                             padding: "0 6px", marginRight: 6, whiteSpace: "nowrap",
                           }}
                         >
-                          {label} {titles.length}
+                          {label} {list.length}
                         </span>
-                        {titles.join(" · ")}
+                        {list.map((b, i) => (
+                          <span key={`${b.title}-${i}`}>
+                            {i > 0 && " · "}
+                            {b.isPrivate && "🔒 "}
+                            {b.title}
+                            {/* 완독한 책은 언제 다 읽었는지 함께 표시 */}
+                            {key === STATUS.DONE && b.endDate && (
+                              <span className="num" style={{ opacity: 0.75 }}> ({fmtDateFull(b.endDate)})</span>
+                            )}
+                          </span>
+                        ))}
                       </p>
                     );
                   })}

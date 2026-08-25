@@ -23,6 +23,7 @@ export type BookFormInitial = {
   mbti?: string | null;
   quote?: string | null;
   review?: string | null;
+  isPrivate?: boolean;
 };
 
 export function BookForm({
@@ -219,6 +220,22 @@ export function BookForm({
 
       <label className="flabel">읽고 느낀 점</label>
       <textarea className="input" name="review" defaultValue={initial.review ?? ""} placeholder="읽고 나서 든 생각을 자유롭게 적어보세요" />
+
+      <label
+        style={{
+          display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer",
+          marginTop: 14, borderTop: "2px dashed var(--soft-line)", paddingTop: 12, fontSize: 13.5,
+        }}
+      >
+        <input type="checkbox" name="isPrivate" defaultChecked={initial.isPrivate ?? false} style={{ marginTop: 3, width: 16, height: 16 }} />
+        <span>
+          <b>🔒 비공개로 기록하기</b>
+          <br />
+          <span className="mini">
+            그룹원에게는 보이지 않고 <b>나와 그룹장·운영자만</b> 볼 수 있어요. 랭킹·공유 보고서에도 나오지 않아요.
+          </span>
+        </span>
+      </label>
 
       <div className="fieldrow" style={{ marginTop: 18 }}>
         <SubmitButton className="btn pri" pendingText={mode === "create" ? "등록하는 중…" : "저장하는 중…"}>

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser, getCurrentMembership, canWriteInGroup, isOwner, isAdmin } from "@/lib/session";
 import { STATUS } from "@/lib/constants";
+import { visibleRecordWhere } from "@/lib/visibility";
 import { fmtDate, readingDays } from "@/lib/format";
 import { startReading, finishReading } from "@/lib/actions/record-actions";
 import { leaveGroup } from "@/lib/actions/group-actions";
@@ -46,13 +47,18 @@ export default async function HomePage({
           orderBy: { updatedAt: "desc" },
         }),
     prisma.readingRecord.findMany({
-      where: { groupId: membership.groupId, deletedAt: null },
+      where: {
+        groupId: membership.groupId,
+        deletedAt: null,
+        // 비공개 기록은 본인·관리자에게만
+        ...visibleRecordWhere({ viewerId: user.id, viewerIsGroupAdmin: isAdmin(membership.role) }),
+      },
       include: { book: true, user: { select: { name: true } } },
       orderBy: { updatedAt: "desc" },
       take: 8,
     }),
     getMonthlyDone(isClassAdmin ? null : user.id, membership.groupId, year),
-    isClassAdmin ? getClassroomProgress(membership.groupId) : null,
+    isClassAdmin ? getClassroomProgress(membership.groupId, { includePrivate: true }) : null,
   ]);
 
   const wish = myRecords.filter((r) => r.status === STATUS.WISH);

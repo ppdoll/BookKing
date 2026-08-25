@@ -61,6 +61,7 @@ export default async function EditBookPage({
             mbti: record.recommendMbti,
             quote: record.memorableQuote,
             review: record.review,
+            isPrivate: record.isPrivate,
           }}
         />
         <form action={softDeleteRecord} style={{ marginTop: 14, borderTop: "2px dashed var(--soft-line)", paddingTop: 12 }}>

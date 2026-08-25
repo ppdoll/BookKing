@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUser, getCurrentMembership } from "@/lib/session";
+import { requireUser, getCurrentMembership, isAdmin } from "@/lib/session";
+import { visibleRecordWhere } from "@/lib/visibility";
 import { STATUS, STATUS_LABEL, type Status } from "@/lib/constants";
 import { fmtDate } from "@/lib/format";
 import { searchBooks } from "@/lib/book-search";
@@ -25,6 +26,7 @@ export default async function SearchPage({
           where: {
             groupId: membership.groupId,
             deletedAt: null,
+            ...visibleRecordWhere({ viewerId: user.id, viewerIsGroupAdmin: isAdmin(membership.role) }),
             OR: [
               { book: { title: { contains: query } } },
               { book: { author: { contains: query } } },

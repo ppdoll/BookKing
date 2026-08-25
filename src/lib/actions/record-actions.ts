@@ -62,6 +62,7 @@ function parseRecordForm(formData: FormData) {
     recommendMbti: String(formData.get("mbti") ?? "").trim() || null,
     memorableQuote: String(formData.get("quote") ?? "").trim() || null,
     review: String(formData.get("review") ?? "").trim() || null,
+    isPrivate: formData.get("isPrivate") === "on",
   };
 }
 
@@ -105,6 +106,7 @@ export async function createRecord(formData: FormData) {
       groupId: m.groupId,
       bookId: book.id,
       status: d.status,
+      isPrivate: d.isPrivate,
       startDate: d.startDate,
       endDate: d.endDate,
       rating: d.rating,
@@ -145,6 +147,7 @@ export async function updateRecord(formData: FormData) {
     data: {
       bookId: book.id,
       status: d.status,
+      isPrivate: d.isPrivate,
       startDate: d.startDate,
       endDate: d.endDate,
       rating: d.rating,

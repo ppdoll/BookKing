@@ -225,6 +225,7 @@ model ReadingRecord {
   recommendMbti  String? // "INFP,ENFP" 또는 "ALL"
   memorableQuote String?
   review         String?
+  isPrivate      Boolean   @default(false) // 비공개 — 본인과 그룹 관리자(그룹장·운영자)에게만 보임
   deletedAt      DateTime? // soft delete
   deletedBy      String? // 삭제한 사용자 id
   createdAt      DateTime  @default(now())

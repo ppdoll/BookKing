@@ -23,6 +23,7 @@ export async function getBookRankings(
     where: {
       status: STATUS.DONE,
       deletedAt: null,
+      isPrivate: false, // 비공개 기록은 랭킹·집계에서 제외
       ...(groupId ? { groupId } : {}),
     },
     select: {
@@ -89,6 +90,7 @@ export async function getTopReaders(
       groupId,
       status: STATUS.DONE,
       deletedAt: null,
+      isPrivate: false, // 비공개 기록은 랭킹·집계에서 제외
       endDate: { gte: start, lt: end },
     },
     select: {
@@ -125,6 +127,7 @@ export async function getMonthlyDone(userId: string | null, groupId: string, yea
       groupId,
       status: STATUS.DONE,
       deletedAt: null,
+      isPrivate: false, // 비공개 기록은 랭킹·집계에서 제외
       endDate: { gte: start, lt: end },
     },
     select: { endDate: true },

@@ -12,7 +12,7 @@ export type StudentProgress = {
   total: number;
   lastAt: Date | null; // 마지막 기록 활동
   /** 이 학생이 기록한 책 (보고서의 "학생별 읽은 책"에 사용, 최근 기록 순) */
-  books: { status: string; title: string }[];
+  books: { status: string; title: string; endDate: Date | null; isPrivate: boolean }[];
 };
 
 export type ClassroomProgress = {
@@ -66,7 +66,10 @@ function compareClassNo(a: string, b: string) {
  * 학교(교실) 모드 선생님용 집계 — 명렬 기준으로 학생별 읽을예정/독서중/완독 수를 센다.
  * 명렬에 있지만 아직 입장하지 않은 학생도 함께 보여줘 참여 현황을 파악할 수 있다.
  */
-export async function getClassroomProgress(groupId: string): Promise<ClassroomProgress> {
+export async function getClassroomProgress(
+  groupId: string,
+  opts: { includePrivate?: boolean } = {}
+): Promise<ClassroomProgress> {
   const roster = await prisma.classroomStudent.findMany({
     where: { groupId },
     select: { id: true, classNo: true, nickname: true, claimedByUserId: true },
@@ -78,15 +81,24 @@ export async function getClassroomProgress(groupId: string): Promise<ClassroomPr
   const records =
     studentIds.length > 0
       ? await prisma.readingRecord.findMany({
-          where: { groupId, deletedAt: null, userId: { in: studentIds } },
-          select: { userId: true, status: true, updatedAt: true, book: { select: { title: true } } },
+          where: {
+            groupId,
+            deletedAt: null,
+            userId: { in: studentIds },
+            // 공유 링크(비관리자 열람)에서는 비공개 기록을 빼고 집계한다
+            ...(opts.includePrivate ? {} : { isPrivate: false }),
+          },
+          select: {
+            userId: true, status: true, updatedAt: true, endDate: true, isPrivate: true,
+            book: { select: { title: true } },
+          },
           orderBy: { updatedAt: "desc" },
         })
       : [];
 
   const byUser = new Map<
     string,
-    { wish: number; reading: number; done: number; lastAt: Date | null; books: { status: string; title: string }[] }
+    { wish: number; reading: number; done: number; lastAt: Date | null; books: StudentProgress["books"] }
   >();
   for (const r of records) {
     const cur = byUser.get(r.userId) ?? { wish: 0, reading: 0, done: 0, lastAt: null, books: [] };
@@ -94,7 +106,7 @@ export async function getClassroomProgress(groupId: string): Promise<ClassroomPr
     else if (r.status === STATUS.READING) cur.reading++;
     else if (r.status === STATUS.DONE) cur.done++;
     if (!cur.lastAt || r.updatedAt > cur.lastAt) cur.lastAt = r.updatedAt;
-    cur.books.push({ status: r.status, title: r.book.title });
+    cur.books.push({ status: r.status, title: r.book.title, endDate: r.endDate, isPrivate: r.isPrivate });
     byUser.set(r.userId, cur);
   }
 
