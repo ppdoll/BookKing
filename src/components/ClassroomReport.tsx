@@ -1,4 +1,5 @@
 import { fmtDate } from "@/lib/format";
+import { STATUS } from "@/lib/constants";
 import type { ClassroomProgress } from "@/lib/classroom-dashboard";
 
 /** 상태별 색은 앱 전체의 pill(읽을예정·독서중·완독)과 같은 색 */
@@ -109,6 +110,53 @@ export function ClassroomReport({
             </tbody>
           </table>
         </div>
+      )}
+
+      {students.some((s) => s.books.length > 0) && (
+        <section style={{ marginTop: 20, breakInside: "auto" }}>
+          <h2 style={{ fontSize: 15, fontWeight: 800, margin: "0 0 10px", borderTop: "2px solid var(--bd)", paddingTop: 12 }}>
+            📖 학생별 읽은 책
+          </h2>
+          {students
+            .filter((s) => s.books.length > 0)
+            .map((s) => {
+              const groupsOfBooks = [
+                { key: STATUS.DONE, label: "🏆 완독", bg: C.done },
+                { key: STATUS.READING, label: "📖 독서중", bg: C.reading },
+                { key: STATUS.WISH, label: "🌱 읽을 예정", bg: C.wish },
+              ];
+              return (
+                <div
+                  key={s.id}
+                  style={{
+                    padding: "8px 0", borderBottom: "1.5px dashed var(--soft-line)",
+                    breakInside: "avoid", pageBreakInside: "avoid",
+                  }}
+                >
+                  <p style={{ margin: "0 0 4px", fontSize: 13.5 }}>
+                    <b>{s.classNo}번 {s.nickname}</b> <span className="mini">{s.total}권</span>
+                  </p>
+                  {groupsOfBooks.map(({ key, label, bg }) => {
+                    const titles = s.books.filter((b) => b.status === key).map((b) => b.title);
+                    if (titles.length === 0) return null;
+                    return (
+                      <p className="mini" key={key} style={{ margin: "2px 0 0", lineHeight: 1.7 }}>
+                        <span
+                          style={{
+                            background: bg, border: "1.5px solid var(--bd)", borderRadius: 5,
+                            padding: "0 6px", marginRight: 6, whiteSpace: "nowrap",
+                          }}
+                        >
+                          {label} {titles.length}
+                        </span>
+                        {titles.join(" · ")}
+                      </p>
+                    );
+                  })}
+                </div>
+              );
+            })}
+        </section>
       )}
 
       <footer className="mini" style={{ marginTop: 16, paddingTop: 10, borderTop: "2px dashed var(--soft-line)" }}>

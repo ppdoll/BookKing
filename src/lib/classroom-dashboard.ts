@@ -11,6 +11,8 @@ export type StudentProgress = {
   done: number;
   total: number;
   lastAt: Date | null; // 마지막 기록 활동
+  /** 이 학생이 기록한 책 (보고서의 "학생별 읽은 책"에 사용, 최근 기록 순) */
+  books: { status: string; title: string }[];
 };
 
 export type ClassroomProgress = {
@@ -77,17 +79,22 @@ export async function getClassroomProgress(groupId: string): Promise<ClassroomPr
     studentIds.length > 0
       ? await prisma.readingRecord.findMany({
           where: { groupId, deletedAt: null, userId: { in: studentIds } },
-          select: { userId: true, status: true, updatedAt: true },
+          select: { userId: true, status: true, updatedAt: true, book: { select: { title: true } } },
+          orderBy: { updatedAt: "desc" },
         })
       : [];
 
-  const byUser = new Map<string, { wish: number; reading: number; done: number; lastAt: Date | null }>();
+  const byUser = new Map<
+    string,
+    { wish: number; reading: number; done: number; lastAt: Date | null; books: { status: string; title: string }[] }
+  >();
   for (const r of records) {
-    const cur = byUser.get(r.userId) ?? { wish: 0, reading: 0, done: 0, lastAt: null };
+    const cur = byUser.get(r.userId) ?? { wish: 0, reading: 0, done: 0, lastAt: null, books: [] };
     if (r.status === STATUS.WISH) cur.wish++;
     else if (r.status === STATUS.READING) cur.reading++;
     else if (r.status === STATUS.DONE) cur.done++;
     if (!cur.lastAt || r.updatedAt > cur.lastAt) cur.lastAt = r.updatedAt;
+    cur.books.push({ status: r.status, title: r.book.title });
     byUser.set(r.userId, cur);
   }
 
@@ -107,6 +114,7 @@ export async function getClassroomProgress(groupId: string): Promise<ClassroomPr
         done,
         total: wish + reading + done,
         lastAt: c?.lastAt ?? null,
+        books: c?.books ?? [],
       };
     })
     .sort((a, b) => compareClassNo(a.classNo, b.classNo));

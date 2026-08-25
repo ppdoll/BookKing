@@ -128,9 +128,15 @@ export function ClassroomBoard({
       </section>
 
       <section className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>
-          🏫 학생 독서 현황 <span className="mini">『{groupName}』 · 명렬 {rosterCount}명</span>
-        </h3>
+        <div className="fieldrow" style={{ gap: 8, alignItems: "baseline", margin: "0 0 4px" }}>
+          <h3 style={{ margin: 0, fontSize: 15 }}>
+            🏫 학생 독서 현황 <span className="mini">『{groupName}』 · 명렬 {rosterCount}명</span>
+          </h3>
+          <span style={{ flex: 1 }} />
+          <a href="/admin/report" target="_blank" rel="noreferrer" className="btn sm pri">
+            📄 보고서 (인쇄·PDF)
+          </a>
+        </div>
         <p className="mini" style={{ margin: "0 0 12px" }}>
           <span title="월요일부터 지금까지 기록을 남긴 학생 수">
             📅 이번 주 활동 <b>{weekActiveCount}/{rosterCount}명</b>
