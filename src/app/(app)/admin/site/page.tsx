@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/session";
-import { isSiteAdminUser } from "@/lib/slots";
+import { isSiteAdminUser, BASE_SLOTS } from "@/lib/slots";
 import { fmtDateFull } from "@/lib/format";
 import Link from "next/link";
-import { approveRequest, rejectRequest, createCoupon, suspendUser, unsuspendUser, saveAffiliateConfig } from "@/lib/actions/slot-actions";
+import { approveRequest, rejectRequest, createCoupon, suspendUser, unsuspendUser, saveAffiliateConfig, setUserSlotLimit } from "@/lib/actions/slot-actions";
 import { getAffiliateConfig } from "@/lib/affiliate";
 import { SubmitButton } from "@/components/SubmitButton";
 import { CopyButton } from "@/components/CopyButton";
@@ -17,10 +17,10 @@ export default async function SiteAdminPage({
 }: {
   searchParams: Promise<{
     error?: string; approved?: string; rejected?: string; created?: string;
-    suspended?: string; unsuspended?: string; uq?: string; utake?: string; affsaved?: string;
+    suspended?: string; unsuspended?: string; slotset?: string; uq?: string; utake?: string; affsaved?: string;
   }>;
 }) {
-  const { error, approved, rejected, created, suspended, unsuspended, uq = "", utake: utakeRaw, affsaved } = await searchParams;
+  const { error, approved, rejected, created, suspended, unsuspended, slotset, uq = "", utake: utakeRaw, affsaved } = await searchParams;
   const user = await requireUser("/admin/site");
   if (!isSiteAdminUser(user)) redirect("/");
 
@@ -40,7 +40,12 @@ export default async function SiteAdminPage({
     take: utake + 1,
     include: {
       _count: {
-        select: { memberships: true, records: { where: { deletedAt: null } } },
+        select: {
+          memberships: true,
+          records: { where: { deletedAt: null } },
+          createdGroups: { where: { isPersonal: false } }, // 이용권을 쓰고 있는 그룹 수
+          slotGrants: true, // 쿠폰 등으로 지급된 이용권 수
+        },
       },
     },
   });
@@ -80,6 +85,8 @@ export default async function SiteAdminPage({
       {created && <div className="toast">🎫 쿠폰이 만들어졌어요: <b style={{ fontFamily: "monospace" }}>{created}</b></div>}
       {suspended && <div className="toast">🚫 계정을 정지했어요. 해당 유저는 로그인해도 안내 페이지만 보게 돼요.</div>}
       {unsuspended && <div className="toast">✅ 정지를 해제했어요. 바로 정상 이용이 가능해요.</div>}
+      {slotset === "fixed" && <div className="toast">🎟️ 최대 그룹 수를 지정했어요.</div>}
+      {slotset === "auto" && <div className="toast">🎟️ 지정을 해제했어요. 기본 제공분 + 쿠폰으로 자동 계산돼요.</div>}
       {affsaved && <div className="toast">💰 제휴 설정이 저장됐어요. 서점 링크에 바로 반영됩니다.</div>}
 
       <section className="card" style={{ marginBottom: 16 }}>
@@ -97,7 +104,7 @@ export default async function SiteAdminPage({
           <div className="tablewrap">
             <table className="mt">
               <thead>
-                <tr><th>이름</th><th>이메일</th><th>가입일</th><th>그룹</th><th>기록</th><th>상태</th><th style={{ width: 260 }}>제재</th></tr>
+                <tr><th>이름</th><th>이메일</th><th>가입일</th><th>그룹</th><th>기록</th><th style={{ width: 150 }}>최대 그룹 생성</th><th>상태</th><th style={{ width: 260 }}>제재</th></tr>
               </thead>
               <tbody>
                 {users.map((u) => {
@@ -109,6 +116,29 @@ export default async function SiteAdminPage({
                       <td className="mini num">{fmtDateFull(u.createdAt)}</td>
                       <td className="num">{u._count.memberships}</td>
                       <td className="num">{u._count.records}</td>
+                      <td>
+                        <form action={setUserSlotLimit} className="fieldrow" style={{ gap: 4 }}>
+                          <input type="hidden" name="userId" value={u.id} />
+                          <span className="mini num" title="생성한 그룹 수">{u._count.createdGroups} /</span>
+                          <input
+                            className="input num"
+                            name="slotLimit"
+                            type="number"
+                            min={0}
+                            max={999}
+                            defaultValue={u.slotLimit ?? ""}
+                            placeholder={String(BASE_SLOTS + u._count.slotGrants)}
+                            style={{ width: 58, padding: "3px 6px", fontSize: 12.5 }}
+                            aria-label="최대 그룹 생성 수"
+                          />
+                          <button type="submit" className="btn sm">저장</button>
+                        </form>
+                        <span className="mini">
+                          {u.slotLimit === null
+                            ? `자동 (기본 ${BASE_SLOTS} + 쿠폰 ${u._count.slotGrants})`
+                            : "관리자 지정"}
+                        </span>
+                      </td>
                       <td>
                         {isAdminUser ? (
                           <span className="pill p-done">🛠 관리자</span>

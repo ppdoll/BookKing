@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/session";
-import { getSlotStatus } from "@/lib/slots";
+import { getSlotStatus, BASE_SLOTS } from "@/lib/slots";
 import { fmtDateFull } from "@/lib/format";
 import { redeemCoupon, requestSlots } from "@/lib/actions/slot-actions";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -57,7 +57,9 @@ export default async function SlotsPage({
         <div className="fieldrow" style={{ gap: 16, fontSize: 14 }}>
           <span>전체 <b className="num" style={{ fontSize: 20 }}>{slots.total}</b>개</span>
           <span className="mini">=</span>
-          <span className="mini">기본 1개 + 지급 {slots.total - 1}개</span>
+          <span className="mini">
+            {slots.limitFixed ? "운영자가 지정한 최대 개수" : `기본 ${BASE_SLOTS}개 + 지급 ${slots.total - BASE_SLOTS}개`}
+          </span>
           <span style={{ flex: 1 }} />
           <span>사용 <b className="num">{slots.used}</b></span>
           <span className={`pill ${slots.available > 0 ? "p-read" : "p-ghost"}`} style={{ padding: "3px 13px" }}>

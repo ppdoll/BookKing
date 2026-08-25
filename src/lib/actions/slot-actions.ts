@@ -148,6 +148,32 @@ export async function saveAffiliateConfig(formData: FormData) {
 }
 
 /** (사이트 관리자) 계정 정지 — 본인·다른 관리자는 불가 */
+/**
+ * (사이트 관리자) 유저별 최대 그룹 생성 수 지정.
+ * 비워서 저장하면 지정이 해제되어 기본 제공분 + 쿠폰 지급분으로 자동 계산된다.
+ */
+export async function setUserSlotLimit(formData: FormData) {
+  const admin = await requireUser("/admin/site");
+  if (!isSiteAdminUser(admin)) redirect("/");
+
+  const userId = String(formData.get("userId") ?? "");
+  const raw = String(formData.get("slotLimit") ?? "").trim();
+
+  let slotLimit: number | null = null;
+  if (raw !== "") {
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 0 || n > 999) err("/admin/site", "최대 그룹 수는 0~999 사이 숫자로 입력해주세요.");
+    slotLimit = n;
+  }
+
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  if (!target) err("/admin/site", "대상 유저를 찾을 수 없어요.");
+
+  await prisma.user.update({ where: { id: userId }, data: { slotLimit } });
+  revalidatePath("/admin/site");
+  redirect(`/admin/site?slotset=${slotLimit === null ? "auto" : "fixed"}`);
+}
+
 export async function suspendUser(formData: FormData) {
   const admin = await requireUser("/admin/site");
   if (!isSiteAdminUser(admin)) redirect("/");

@@ -19,6 +19,7 @@ model User {
   emailVerified DateTime?
   image         String?
   isSiteAdmin   Boolean   @default(false) // 최고 운영자 (쿠폰 발급·요청 처리)
+  slotLimit     Int? // 사이트 관리자가 지정한 최대 그룹 생성 수. null이면 자동(기본 + 쿠폰 지급분)
   suspendedAt   DateTime? // 계정 정지 (사이트 관리자 제재)
   suspendedReason String?
   createdAt     DateTime  @default(now())
