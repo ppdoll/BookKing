@@ -4,14 +4,18 @@ import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { InstallPrompt } from "@/components/InstallPrompt";
 
 const SITE_URL = "https://book-king-two.vercel.app";
-const TITLE = "BookKing — 함께 읽는 그룹 독서장";
+const TITLE = "BookKing — 함께 쓰는 독서록·독서장";
 const DESCRIPTION =
-  "가족·친구·동료와 그룹을 만들어 읽은 책을 기록하고, 별점과 문장을 나누고, 랭킹을 겨루는 독서 기록 서비스";
+  "가족·친구·학급이 함께 쓰는 무료 온라인 독서록. 읽은 책을 독서장에 기록하고 별점·문장·느낀 점을 남기면 나만의 독서 결산이 만들어져요.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: TITLE,
   description: DESCRIPTION,
+  keywords: [
+    "독서록", "독서장", "독서 기록", "독서록 쓰는 법", "온라인 독서록",
+    "학급 독서록", "독서모임", "독서 감상문", "독서 기록 앱",
+  ],
   openGraph: {
     title: TITLE,
     description: DESCRIPTION,

@@ -26,9 +26,9 @@ export default async function LoginPage({
   return (
     <div className="center-page">
       <h1 className="logo" style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>
-        📚 Book<em style={{ fontStyle: "normal", color: "var(--accent)" }}>King</em> — 함께 읽는 그룹 독서장
+        📚 Book<em style={{ fontStyle: "normal", color: "var(--accent)" }}>King</em> — 함께 쓰는 독서록·독서장
       </h1>
-      <p className="mini" style={{ margin: "4px 0 22px" }}>가족·친구·모임과 함께 읽은 책을 기록하고 나누는 무료 독서 기록 서비스</p>
+      <p className="mini" style={{ margin: "4px 0 22px" }}>가족·친구·학급이 함께 쓰는 무료 온라인 독서록 · 독서장</p>
 
       {error && (
         <div className="toast err">로그인에 실패했어요. 다시 시도해주세요.</div>
@@ -84,19 +84,21 @@ export default async function LoginPage({
       </div>
       <p className="mini" style={{ marginTop: 14 }}>
         <a href="/manual.html" style={{ textDecoration: "underline" }}>❓ BookKing 사용 설명서 보기</a>
+        {" · "}
+        <a href="/tips" style={{ textDecoration: "underline" }}>📖 독서록 쓰는 법</a>
       </p>
 
       <section style={{ marginTop: 28, textAlign: "left", maxWidth: 420 }}>
         <h2 style={{ fontSize: 16, fontWeight: 800, margin: "0 0 8px" }}>BookKing은 이런 서비스예요</h2>
         <ul className="mini" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.9 }}>
-          <li><b>그룹 독서 기록</b> — 가족·친구·독서모임끼리 그룹을 만들어 읽은 책을 함께 기록해요</li>
+          <li><b>함께 쓰는 독서록</b> — 가족·친구·학급·독서모임끼리 그룹을 만들어 읽은 책을 각자 독서장에 기록해요</li>
           <li><b>읽을 예정 → 독서중 → 완독</b> 3단계 관리와 별점·기억에 남는 문장·감상 기록</li>
           <li><b>독서왕·인기 책 랭킹</b>으로 그룹원과 소소하게 겨루는 재미</li>
           <li><b>나만의 독서 결산 카드</b>를 만들어 카톡·SNS로 공유</li>
           <li>구글 로그인 한 번이면 시작, 앱 설치 없이 홈 화면에 추가 가능 (무료)</li>
         </ul>
         <p className="mini" style={{ marginTop: 12 }}>
-          독서 기록 앱, 독서 모임 관리, 그룹 책 추천을 한 곳에서 — 지금 무료로 시작해보세요.
+          온라인 독서록, 학급 독서장 관리, 독서모임 기록을 한 곳에서 — 지금 무료로 시작해보세요.
         </p>
       </section>
     </div>
