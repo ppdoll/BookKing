@@ -95,7 +95,8 @@ export async function WrappedCard({ stats, hideCommercial = false }: { stats: Wr
                 <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 800 }}>
                   📚 올해 읽은 책 <span className="mini">({stats.books.length}권) · 눌러서 정보 보기</span>
                 </p>
-                <div style={{ display: "grid", gap: 6 }}>
+                {/* minmax(0,1fr): 좁은 화면에서 칸이 내용 너비만큼 늘어나 카드 밖으로 잘리는 것을 막는다 */}
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 6 }}>
                   {stats.books.map((b, i) => (
                     <details key={`${b.isbn ?? b.title}-${i}`} style={{ border: "2px solid var(--bd)", borderRadius: 10, background: "var(--panel)", padding: "6px 10px" }}>
                       <summary style={{ cursor: "pointer", fontSize: 13, listStyle: "none", display: "flex", alignItems: "center", gap: 8 }}>

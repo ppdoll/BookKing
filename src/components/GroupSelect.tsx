@@ -13,11 +13,10 @@ export function GroupSelect({
   return (
     <form action={selectGroup}>
       <select
-        className="input"
+        className="input gsel"
         name="groupId"
         defaultValue={currentId ?? undefined}
         aria-label="그룹 선택"
-        style={{ width: "auto", padding: "4px 10px", borderRadius: 99, fontWeight: 700, fontSize: 13 }}
         onChange={(e) => e.currentTarget.form?.requestSubmit()}
       >
         {groups.map((g) => (

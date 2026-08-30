@@ -7,16 +7,13 @@ const C = { wish: "var(--sun-soft)", reading: "var(--mint-soft)", done: "var(--a
 
 function Tile({ label, emoji, value, bg }: { label: string; emoji: string; value: number; bg: string }) {
   return (
-    <div
-      className="bcol"
-      style={{ textAlign: "center", padding: "14px 10px", background: bg }}
-    >
-      <div style={{ fontSize: 12.5, fontWeight: 800 }}>
+    <div className="bcol tile" style={{ background: bg }}>
+      <div className="tile-l">
         {emoji} {label}
       </div>
-      <div className="num" style={{ fontSize: 34, fontWeight: 900, lineHeight: 1.15 }}>
+      <div className="num tile-v">
         {value}
-        <span style={{ fontSize: 15, fontWeight: 800 }}>권</span>
+        <span>권</span>
       </div>
     </div>
   );
@@ -35,13 +32,7 @@ function ProgressBar({ wish, reading, done, max }: { wish: number; reading: numb
   // 가장 많이 기록한 학생의 막대가 100%가 되도록 맞춰 서로 비교하기 쉽게 한다
   const scale = (n: number) => `${(n / Math.max(max, 1)) * 100}%`;
   return (
-    <span
-      title={`읽을 예정 ${wish} · 독서중 ${reading} · 완독 ${done}`}
-      style={{
-        display: "flex", height: 14, width: "100%", minWidth: 90,
-        border: "2px solid var(--bd)", borderRadius: 8, overflow: "hidden", background: "var(--chip)",
-      }}
-    >
+    <span className="pbar" title={`읽을 예정 ${wish} · 독서중 ${reading} · 완독 ${done}`}>
       {done > 0 && <span style={{ width: scale(done), background: C.done }} />}
       {reading > 0 && <span style={{ width: scale(reading), background: C.reading }} />}
       {wish > 0 && <span style={{ width: scale(wish), background: C.wish }} />}
@@ -93,7 +84,7 @@ export function ClassroomBoard({
   return (
     <>
       {/* 학생 전체 합계 */}
-      <div className="board" style={{ marginBottom: 16 }}>
+      <div className="board tiles" style={{ marginBottom: 16 }}>
         <Tile label="읽을 예정" emoji="🌱" value={totals.wish} bg={C.wish} />
         <Tile label="독서중" emoji="📖" value={totals.reading} bg={C.reading} />
         <Tile label="완독" emoji="🏆" value={totals.done} bg="var(--panel)" />
@@ -179,14 +170,14 @@ export function ClassroomBoard({
             <table className="mt">
               <thead>
                 <tr>
-                  <th style={{ width: 62 }}>반번호</th>
+                  <th className="col-no">반번호</th>
                   <th>별명</th>
-                  <th style={{ minWidth: 110 }}>진행</th>
-                  <th style={{ width: 74 }}>읽을 예정</th>
-                  <th style={{ width: 62 }}>독서중</th>
-                  <th style={{ width: 56 }}>완독</th>
-                  <th style={{ width: 52 }}>합계</th>
-                  <th style={{ width: 86 }}>최근 활동</th>
+                  <th className="col-prog">진행</th>
+                  <th className="hide-sm" style={{ width: 74 }}>읽을 예정</th>
+                  <th className="hide-sm" style={{ width: 62 }}>독서중</th>
+                  <th className="col-n">완독</th>
+                  <th className="col-n">합계</th>
+                  <th className="hide-sm" style={{ width: 86 }}>최근 활동</th>
                 </tr>
               </thead>
               <tbody>
@@ -204,11 +195,11 @@ export function ClassroomBoard({
                       {!s.entered && <span className="pill p-ghost" style={{ marginLeft: 6 }}>미입장</span>}
                     </td>
                     <td><ProgressBar wish={s.wish} reading={s.reading} done={s.done} max={maxTotal} /></td>
-                    <td className="num">{s.wish || "-"}</td>
-                    <td className="num">{s.reading || "-"}</td>
+                    <td className="num hide-sm">{s.wish || "-"}</td>
+                    <td className="num hide-sm">{s.reading || "-"}</td>
                     <td className="num"><b>{s.done || "-"}</b></td>
                     <td className="num">{s.total || "-"}</td>
-                    <td className="mini num">{s.lastAt ? fmtDate(s.lastAt) : "-"}</td>
+                    <td className="mini num hide-sm">{s.lastAt ? fmtDate(s.lastAt) : "-"}</td>
                   </tr>
                 ))}
               </tbody>

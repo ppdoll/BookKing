@@ -73,8 +73,8 @@ export function InstallPrompt() {
 
   return (
     <div
+      className="install-chip"
       style={{
-        position: "fixed", right: 14, bottom: 14, zIndex: 50, maxWidth: 300,
         background: "var(--panel, #fff)", color: "var(--ink, #3B2F28)",
         border: "2px solid var(--bd, #3B2F28)", borderRadius: 14,
         boxShadow: "3px 3px 0 var(--bd, #3B2F28)", padding: "12px 14px", fontSize: 13.5,

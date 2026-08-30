@@ -152,6 +152,7 @@ export default async function HomePage({
               </section>
             </div>
           )}
+          {!isClassAdmin && <p className="mini swipehint">← 옆으로 밀어 보세요 →</p>}
 
           <section className="card" style={{ marginBottom: 16 }}>
             <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>
@@ -184,7 +185,7 @@ export default async function HomePage({
               <p className="mini">아직 그룹에 기록이 없어요. 첫 기록의 주인공이 되어보세요!</p>
             ) : (
               <div className="tablewrap">
-                <table className="mt">
+                <table className="mt stack">
                   <tbody>
                     {groupFeed.map((r) => (
                       <tr key={r.id}>
@@ -193,8 +194,8 @@ export default async function HomePage({
                             <b>{r.book.title}</b> <span className="mini">· {r.book.author}</span>
                           </Link>
                         </td>
-                        <td>{r.user.name}</td>
-                        <td>
+                        <td className="meta">{r.user.name}</td>
+                        <td className="meta">
                           {r.status === STATUS.DONE ? (
                             r.rating !== null ? (
                               <Stars rating={r.rating} size={12} />
@@ -207,7 +208,7 @@ export default async function HomePage({
                             <span className="pill p-wish">읽을 예정</span>
                           )}
                         </td>
-                        <td className="mini num">
+                        <td className="mini num meta">
                           {r.status === STATUS.DONE && r.endDate
                             ? `${fmtDate(r.endDate)} 완독`
                             : r.startDate

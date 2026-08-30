@@ -94,7 +94,7 @@ export default async function AdminGroupPage({
       {report === "off" && <div className="toast">보고서 공유를 중지했어요. 기존 링크는 더 이상 열리지 않아요.</div>}
       {pwreset && <div className="toast">🔑 학생 비밀번호를 초기화했어요. 그 학생은 반번호로 다시 들어와 새로 정하면 돼요.</div>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16, alignItems: "start" }}>
+      <div className="admin-grid">
         <section className="card tablewrap">
           <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>
             👥 그룹원 관리 <span className="mini">{members.length}명</span>
@@ -291,7 +291,7 @@ export default async function AdminGroupPage({
             학생은 구글 로그인 없이 <b>반번호 + 비밀번호</b>로 입장해요. 개인정보 보호를 위해 명렬에는 <b>실명 대신 별명</b>을 등록하세요. 비밀번호는 수업 때 구두로 알려주세요.
           </p>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
+          <div className="admin-grid even">
             {/* 입장 링크 + 비밀번호 */}
             <div style={{ display: "grid", gap: 16 }}>
               <div>

@@ -72,26 +72,27 @@ export default async function SearchPage({
               <p className="mini" style={{ margin: 0 }}>그룹에서 아직 아무도 이 책을 기록하지 않았어요.</p>
             ) : (
               <div className="tablewrap">
-                <table className="mt">
+                <table className="mt stack">
                   <tbody>
                     {groupResults.map((r) => (
                       <tr key={r.id}>
-                        <td style={{ width: 44 }}>
+                        {/* 표지는 좁은 화면에서 감춘다 — 아래 검색 결과에 같은 표지가 다시 나온다 */}
+                        <td className="hide-sm" style={{ width: 44 }}>
                           <span className="cover" style={{ width: 30, height: 42 }}>
                             {r.book.thumbnailUrl ? <img src={r.book.thumbnailUrl} alt="" /> : <span className="bk" style={{ fontSize: 13 }}>📕</span>}
                           </span>
                         </td>
                         <td><b>{r.book.title}</b> <span className="mini">· {r.book.author}</span></td>
-                        <td>{r.user.name}</td>
-                        <td>
+                        <td className="meta">{r.user.name}</td>
+                        <td className="meta">
                           {r.status === STATUS.DONE && r.rating !== null ? (
                             <Stars rating={r.rating} size={12} />
                           ) : (
                             <span className="pill p-read">{STATUS_LABEL[r.status as Status]}</span>
                           )}
                         </td>
-                        <td className="mini num">{r.endDate ? `${fmtDate(r.endDate)} 완독` : ""}</td>
-                        <td>
+                        <td className="mini num meta">{r.endDate ? `${fmtDate(r.endDate)} 완독` : ""}</td>
+                        <td className="meta">
                           <Link href={`/records/${r.id}`} className="mini" style={{ textDecoration: "underline" }}>
                             문장·느낀점 보기 →
                           </Link>
