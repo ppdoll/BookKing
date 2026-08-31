@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { signOut } from "@/auth";
 import { requireUser } from "@/lib/session";
 import { getStudentEntry } from "@/lib/student";
 import { setStudentPassword } from "@/lib/actions/group-actions";
@@ -52,6 +53,22 @@ export default async function SetStudentPasswordPage({
           💡 잊어버리면 선생님께 말씀드리세요. 선생님이 초기화해주면 다시 정할 수 있어요.
         </p>
       </div>
+
+      {/*
+        내가 아닌 별명으로 들어왔을 때 빠져나갈 길.
+        이 화면은 (app) 레이아웃이 계속 되돌려 보내므로 여기에 로그아웃이 없으면
+        (같은 기기를 돌려 쓰는 교실에서) 다른 학생이 들어올 방법이 없다.
+        로그아웃 후에는 로그인 화면 대신 우리 반 입장 화면으로 바로 보낸다.
+      */}
+      <form
+        action={async () => {
+          "use server";
+          await signOut({ redirectTo: `/class/${entry.group.inviteCode}` });
+        }}
+        style={{ marginTop: 16 }}
+      >
+        <button type="submit" className="btn sm">🔄 내가 아니에요 — 다른 별명으로 들어가기</button>
+      </form>
     </div>
   );
 }

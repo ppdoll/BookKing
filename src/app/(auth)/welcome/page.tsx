@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { signOut } from "@/auth";
 import { requireSessionUser } from "@/lib/session";
 import { updateName } from "@/lib/actions/user-actions";
 
@@ -34,6 +35,17 @@ export default async function WelcomePage({
           </button>
         </form>
       </div>
+
+      {/* 이름을 정하기 전에는 (app) 화면으로 못 나가므로 여기에도 빠져나갈 길을 둔다 */}
+      <form
+        action={async () => {
+          "use server";
+          await signOut({ redirectTo: "/login" });
+        }}
+        style={{ marginTop: 16 }}
+      >
+        <button type="submit" className="btn sm">🔄 다른 계정으로 로그인</button>
+      </form>
     </div>
   );
 }
