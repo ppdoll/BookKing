@@ -69,6 +69,14 @@ export default async function ClassEntryPage({
       <p className="mini" style={{ marginTop: 14 }}>
         별명으로만 활동해요 · <Link href="/privacy" style={{ textDecoration: "underline" }}>개인정보 처리방침</Link>
       </p>
+      {/*
+        이 링크를 열면 어느 단계에서든 별명 입력만 요구받는다. 선생님이 학생용 링크를
+        열어봤거나, 학부모·다른 계정 사용자가 들어온 경우 빠져나갈 길이 필요하다.
+        (모든 상태 — 잘못된 링크·만료·준비중·별명·비밀번호 — 에서 보이도록 Shell에 둔다)
+      */}
+      <p className="mini" style={{ marginTop: 10 }}>
+        <Link href="/login" className="btn sm">🔑 선생님·일반 계정으로 로그인</Link>
+      </p>
     </div>
   );
 
