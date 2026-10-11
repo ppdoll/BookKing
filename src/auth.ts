@@ -145,7 +145,9 @@ providers.push(
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
+  // 학기 내내 다시 로그인하지 않아도 되도록 180일.
+  // 기본값(30일)이면 같은 날 한꺼번에 입장한 한 반 학생들의 세션이 같은 날 동시에 끊긴다.
+  session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 180 },
   pages: { signIn: "/login" },
   providers,
   events: {

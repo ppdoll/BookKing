@@ -202,17 +202,34 @@ export default async function ClassEntryPage({
 
   // 아직 비밀번호가 없는 학생 — 본인 확인을 위해 반 비밀번호를 한 번 받는다
   const single = candidates.length === 1 ? candidates[0] : null;
+  // 이미 들어와 본 적이 있는 학생인가 — 개인 비밀번호가 생기기 전에 입장한 경우다.
+  // 이들에게 "처음이시군요"는 자기가 엉뚱한 곳에 온 줄 알게 만든다.
+  const returning = candidates.some((c) => c.claimedByUserId);
   return (
     <Shell>
       <p style={{ margin: "0 0 4px", fontSize: 15 }}>
-        👋 <b>{nickname}</b>님, 처음이시군요!
+        {returning ? (
+          <>🔄 <b>{nickname}</b>님, 다시 오셨군요!</>
+        ) : (
+          <>👋 <b>{nickname}</b>님, 처음이시군요!</>
+        )}
       </p>
       <p className="mini" style={{ margin: "0 0 14px" }}>
-        선생님이 알려준 <b>반 비밀번호</b>를 한 번만 확인할게요. 그다음 <b>내 비밀번호</b>를 정하면 끝이에요.
+        {returning ? (
+          <>
+            로그인 방법이 바뀌었어요. <b>반 비밀번호</b>를 한 번만 더 확인할게요.
+            그다음 <b>내 비밀번호</b>를 정하면, 앞으로는 그것만으로 들어올 수 있어요.
+          </>
+        ) : (
+          <>
+            선생님이 알려준 <b>반 비밀번호</b>를 한 번만 확인할게요. 그다음 <b>내 비밀번호</b>를 정하면 끝이에요.
+          </>
+        )}
       </p>
       {error === "first" && (
         <div className="toast err" style={{ marginBottom: 12 }}>
           {single ? "반 비밀번호가 맞지 않아요." : "반번호나 반 비밀번호가 맞지 않아요."}
+          {" 선생님께 반 비밀번호를 다시 여쭤보세요."}
         </div>
       )}
       <form
