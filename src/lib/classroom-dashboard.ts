@@ -6,6 +6,8 @@ export type StudentProgress = {
   classNo: string;
   nickname: string;
   entered: boolean; // 입장(계정 배정) 완료 여부
+  /** 개인 비밀번호를 정했는지 — 아직이면 다음 입장 때 반 비밀번호가 한 번 필요하다 */
+  hasPassword: boolean;
   wish: number;
   reading: number;
   done: number;
@@ -21,6 +23,8 @@ export type ClassroomProgress = {
   rosterCount: number;
   enteredCount: number;
   noRecordCount: number; // 입장했지만 아직 기록이 없는 학생
+  /** 입장은 했지만 개인 비밀번호를 아직 안 정한 학생 — 세션이 끊기면 반 비밀번호 없이는 못 들어온다 */
+  noPasswordCount: number;
   weekActiveCount: number; // 이번 주(월요일 00:00 KST 이후) 기록을 남긴 학생 수
   /** 완독률 = 완독 권수 / 전체 기록 권수 (기록이 없으면 0) */
   doneRate: number;
@@ -69,7 +73,7 @@ function compareClassNo(a: string, b: string) {
 export async function getClassroomProgress(groupId: string): Promise<ClassroomProgress> {
   const roster = await prisma.classroomStudent.findMany({
     where: { groupId },
-    select: { id: true, classNo: true, nickname: true, claimedByUserId: true },
+    select: { id: true, classNo: true, nickname: true, claimedByUserId: true, password: true },
   });
 
   const studentIds = roster.map((r) => r.claimedByUserId).filter((v): v is string => Boolean(v));
@@ -112,6 +116,7 @@ export async function getClassroomProgress(groupId: string): Promise<ClassroomPr
         classNo: r.classNo,
         nickname: r.nickname,
         entered: Boolean(r.claimedByUserId),
+        hasPassword: Boolean(r.password),
         wish,
         reading,
         done,
@@ -143,6 +148,7 @@ export async function getClassroomProgress(groupId: string): Promise<ClassroomPr
     rosterCount,
     enteredCount: students.filter((s) => s.entered).length,
     noRecordCount: students.filter((s) => s.entered && s.total === 0).length,
+    noPasswordCount: students.filter((s) => s.entered && !s.hasPassword).length,
     weekActiveCount: students.filter((s) => s.lastAt !== null && s.lastAt >= weekStart).length,
     doneRate: pct(totals.done, totals.total),
     participationRate: pct(activeCount, rosterCount),

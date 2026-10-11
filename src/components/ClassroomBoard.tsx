@@ -77,12 +77,29 @@ export function ClassroomBoard({
   /** 정렬 칩 링크 — 다른 쿼리(랭킹 탭 등)를 유지하면서 정렬만 바꾼다 */
   sortHref: (key: SortKey) => string;
 }) {
-  const { totals, rosterCount, enteredCount, noRecordCount, weekActiveCount, doneRate, participationRate, avgBooks } = data;
+  const { totals, rosterCount, enteredCount, noRecordCount, noPasswordCount, weekActiveCount, doneRate, participationRate, avgBooks } = data;
   const students = sortStudents(data.students, sort);
   const maxTotal = Math.max(...students.map((s) => s.total), 1);
 
   return (
     <>
+      {/*
+        개인 비밀번호를 아직 안 정한 학생 경고.
+        이 학생들은 로그인 상태가 유지되는 동안에는 멀쩡히 쓰다가, 세션이 끊기는 순간
+        반 비밀번호 없이는 다시 못 들어온다. 선생님이 미리 알아챌 수 있도록 띄운다.
+      */}
+      {noPasswordCount > 0 && (
+        <div className="toast" style={{ background: "var(--sun-soft)" }}>
+          🔑 개인 비밀번호를 아직 정하지 않은 학생이 <b>{noPasswordCount}명</b> 있어요.
+          <span className="mini" style={{ display: "block", fontWeight: 400, marginTop: 4 }}>
+            이 학생들은 로그아웃되거나 한참 뒤에 다시 들어올 때 <b>반 비밀번호</b>가 한 번 필요해요.
+            수업 때 반 비밀번호를 알려주세요 — 기억나지 않으면{" "}
+            <Link href="/admin/group" style={{ textDecoration: "underline" }}>👑 그룹 관리</Link>에서
+            새로 정하면 됩니다. 한 번 들어와 본인 비밀번호를 정하면 그다음부터는 필요 없어요.
+          </span>
+        </div>
+      )}
+
       {/* 학생 전체 합계 */}
       <div className="board tiles" style={{ marginBottom: 16 }}>
         <Tile label="읽을 예정" emoji="🌱" value={totals.wish} bg={C.wish} />
@@ -193,6 +210,9 @@ export function ClassroomBoard({
                         {s.nickname}
                       </Link>
                       {!s.entered && <span className="pill p-ghost" style={{ marginLeft: 6 }}>미입장</span>}
+                      {s.entered && !s.hasPassword && (
+                        <span className="pill p-wish" style={{ marginLeft: 6 }} title="아직 개인 비밀번호를 정하지 않았어요">🔑</span>
+                      )}
                     </td>
                     <td><ProgressBar wish={s.wish} reading={s.reading} done={s.done} max={maxTotal} /></td>
                     <td className="num hide-sm">{s.wish || "-"}</td>
