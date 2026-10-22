@@ -113,9 +113,44 @@ label.flabel { font-size: 13px; font-weight: 800; display: block; margin: 14px 0
 .toast {
   border: 2px solid var(--bd); border-radius: 12px; background: var(--mint-soft);
   padding: 9px 14px; font-size: 13.5px; font-weight: 700; margin-bottom: 14px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-sm); word-break: keep-all;
 }
 .toast.err { background: var(--danger-soft); color: var(--danger); }
+/* 오류 안내 밑에 붙는 "왜 그런지·어떻게 하면 되는지" 한두 줄 */
+.toast-sub {
+  display: block; margin-top: 4px; font-size: 12.5px; font-weight: 500; color: var(--ink);
+  word-break: keep-all; /* "선생/님께"처럼 낱말 중간에서 줄이 끊기지 않게 */
+}
+/* "어떻게 해야 하나요?" → 도움말의 해당 항목 */
+.help-link {
+  display: inline-block; margin-top: 6px; font-size: 12.5px; font-weight: 800;
+  color: var(--ink); text-decoration: underline; text-underline-offset: 2px;
+}
+
+/* ── 학생용 오류·404 화면 ── */
+.err-emoji { font-size: 48px; line-height: 1; }
+.err-title { font-size: 22px; font-weight: 900; margin: 10px 0 4px; }
+.err-steps { margin: 4px 0 12px; padding-left: 20px; font-size: 14px; line-height: 1.8; word-break: keep-all; }
+.err-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0; }
+.err-code {
+  margin: 0 0 12px; padding: 6px 10px; border-radius: 8px; background: var(--chip);
+  font-size: 12.5px; color: var(--sub); word-break: break-all;
+}
+.err-code b { color: var(--ink); font-family: ui-monospace, Menlo, Consolas, monospace; }
+
+/* ── 막혔을 때 도움말 (/help) ── */
+.help-toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; }
+.help-item { margin-bottom: 12px; scroll-margin-top: 72px; }
+.help-item h2 { font-size: 16px; font-weight: 900; margin: 0 0 8px; }
+.help-item ol { margin: 0; padding-left: 20px; line-height: 1.8; font-size: 14px; word-break: keep-all; }
+.help-item h2, .help-say, .help-teacher { word-break: keep-all; }
+.help-say {
+  margin: 10px 0 0; padding: 8px 10px; border-radius: 10px;
+  background: var(--sun-soft); font-size: 13px;
+}
+.help-teacher { margin: 8px 0 0; font-size: 12.5px; color: var(--sub); }
+/* 오류 화면의 "어떻게 해야 하나요?"로 들어오면 그 항목을 눈에 띄게 */
+.help-item:target { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 /* ── 별점 ── */
 .stars { color: var(--sun); letter-spacing: 1px; text-shadow: 0 0 1px var(--bd); white-space: nowrap; }
@@ -312,7 +347,8 @@ table.mt tr:last-child td { border-bottom: 0; }
 .statusradio input { position: absolute; opacity: 0; pointer-events: none; }
 .statusradio label:has(input:checked) { background: var(--mint-soft); color: var(--ink); box-shadow: var(--shadow-sm); }
 
-.center-page { max-width: 440px; margin: 60px auto; text-align: center; padding: 0 16px; }
+/* 로그인·반 입장·오류 화면 — 한국어 문장이 낱말 중간에서 끊기지 않게(keep-all) */
+.center-page { max-width: 440px; margin: 60px auto; text-align: center; padding: 0 16px; word-break: keep-all; }
 .center-page .card { text-align: left; }
 .page-h { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 16px; flex-wrap: wrap; }
 .page-h h1 { font-size: 22px; font-weight: 900; margin: 0; }

@@ -21,7 +21,11 @@ function detectInApp(): InAppInfo | null {
   };
 }
 
-export function InAppBrowserGuard() {
+/**
+ * variant="class": 학생 입장 화면용 문구. 학생은 구글 로그인을 쓰지 않으므로
+ * "구글 로그인이 막혀요"는 엉뚱한 겁을 준다 — 학생 입장은 앱 안에서도 된다고 알려준다.
+ */
+export function InAppBrowserGuard({ variant = "login" }: { variant?: "login" | "class" }) {
   const [info, setInfo] = useState<InAppInfo | null>(null);
 
   useEffect(() => {
@@ -53,13 +57,28 @@ export function InAppBrowserGuard() {
 
   return (
     <div className="card" style={{ background: "var(--sun-soft)", marginBottom: 14, textAlign: "left" }}>
-      <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>
-        ⚠️ 앱 안 브라우저에서는 Google 로그인이 막혀요
-      </p>
-      <p className="mini" style={{ margin: "6px 0 10px" }}>
-        카카오톡·인스타그램 등에서 링크를 열면 Google이 보안 정책으로 로그인을 차단해요.
-        기본 브라우저(Chrome/Safari)로 열면 정상적으로 로그인돼요.
-      </p>
+      {variant === "class" ? (
+        <>
+          <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>
+            💬 {info.kakao ? "카카오톡" : "앱"} 안에서 열렸어요
+          </p>
+          <p className="mini" style={{ margin: "6px 0 10px" }}>
+            {info.kakao
+              ? "크롬·사파리로 옮겨 여는 중이에요. 넘어가지 않으면 아래 버튼을 눌러 주세요. 그래도 안 되면 여기서 그대로 입장해도 돼요."
+              : "여기서도 우리 반에 들어갈 수 있어요. 화면이 이상하거나 다음으로 넘어가지 않으면 크롬·사파리로 열어 주세요."}
+          </p>
+        </>
+      ) : (
+        <>
+          <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>
+            ⚠️ 앱 안 브라우저에서는 Google 로그인이 막혀요
+          </p>
+          <p className="mini" style={{ margin: "6px 0 10px" }}>
+            카카오톡·인스타그램 등에서 링크를 열면 Google이 보안 정책으로 로그인을 차단해요.
+            기본 브라우저(Chrome/Safari)로 열면 정상적으로 로그인돼요.
+          </p>
+        </>
+      )}
       {canAutoOpen ? (
         <button type="button" className="btn pri" onClick={openExternal}>
           🌐 기본 브라우저로 열기

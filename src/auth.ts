@@ -148,7 +148,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // 학기 내내 다시 로그인하지 않아도 되도록 180일.
   // 기본값(30일)이면 같은 날 한꺼번에 입장한 한 반 학생들의 세션이 같은 날 동시에 끊긴다.
   session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 180 },
-  pages: { signIn: "/login" },
+  // 오류도 로그인 화면으로 — 지정하지 않으면 Auth.js의 영어 기본 오류 화면(/api/auth/error)이 뜬다.
+  // 로그인 화면이 ?error= 종류별로 알아듣기 쉬운 안내와 도움말 링크를 보여준다.
+  pages: { signIn: "/login", error: "/login" },
   providers,
   events: {
     // Google 프로필 이름을 그대로 쓰지 않고, 서비스 표시 이름을 직접 등록받는다

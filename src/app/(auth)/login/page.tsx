@@ -3,6 +3,46 @@ import { AuthError } from "next-auth";
 import { auth, signIn, googleEnabled, devLoginEnabled } from "@/auth";
 import { prisma } from "@/lib/db";
 import { InAppBrowserGuard } from "@/components/InAppBrowserGuard";
+import { HelpLink } from "@/components/HelpLink";
+import { HELP } from "@/lib/help";
+
+/**
+ * 로그인 오류 안내. Auth.js는 오류 종류를 ?error= 로 넘겨준다
+ * (pages.signIn·pages.error 둘 다 이 페이지 — src/auth.ts).
+ * 화면에 이름 그대로 오는 건 일부뿐이고 나머지는 전부 "Configuration"으로 온다.
+ */
+function loginErrorMessage(error: string): { title: string; sub: string } {
+  switch (error) {
+    case "AccessDenied":
+      return {
+        title: "구글 계정으로 들어가는 게 허락되지 않았어요",
+        sub: "학교 구글 계정이라면 학교에서 바깥 서비스 로그인을 막아 뒀을 수 있어요. 개인 구글(gmail) 계정으로 다시 시도해 보세요.",
+      };
+    case "OAuthCallbackError":
+      return {
+        title: "구글 로그인이 중간에 끊겼어요",
+        sub: "다시 시도해 주세요. 카카오톡 같은 앱 안에서 열었다면 크롬·사파리로 열어 주세요.",
+      };
+    case "OAuthAccountNotLinked":
+    case "AccountNotLinked":
+      return {
+        title: "이미 다른 방법으로 가입된 이메일이에요",
+        sub: "처음 가입할 때 썼던 방법으로 로그인해 주세요.",
+      };
+    case "MissingCSRF":
+      return {
+        title: "로그인 화면이 너무 오래 열려 있었어요",
+        sub: "새로고침한 뒤 다시 시도해 주세요.",
+      };
+    case "Configuration":
+      return {
+        title: "지금 로그인 기능에 문제가 있어요",
+        sub: "여러분 잘못이 아니에요. 잠시 뒤 다시 시도해 주세요. 계속되면 도움말에 있는 연락처로 알려 주세요.",
+      };
+    default:
+      return { title: "로그인에 실패했어요", sub: "다시 시도해 주세요." };
+  }
+}
 
 export default async function LoginPage({
   searchParams,
@@ -30,9 +70,16 @@ export default async function LoginPage({
       </h1>
       <p className="mini" style={{ margin: "4px 0 22px" }}>가족·친구·학급이 함께 쓰는 무료 온라인 독서록 · 독서장</p>
 
-      {error && (
-        <div className="toast err">로그인에 실패했어요. 다시 시도해주세요.</div>
-      )}
+      {error && (() => {
+        const m = loginErrorMessage(error);
+        return (
+          <div className="toast err" style={{ textAlign: "left" }}>
+            {m.title}
+            <span className="toast-sub">{m.sub}</span>
+            <HelpLink to={HELP.google} />
+          </div>
+        );
+      })()}
 
       <InAppBrowserGuard />
 
@@ -82,7 +129,22 @@ export default async function LoginPage({
           </form>
         )}
       </div>
+
+      {/*
+        홈 화면에 추가해 둔 아이콘이나 사이트 주소로 들어온 학생은 로그아웃되면 이 화면에 닿는다.
+        구글 버튼만 보이면 학생은 자기가 어디로 가야 하는지 알 수 없다.
+      */}
+      <div className="card" style={{ marginTop: 12, background: "var(--mint-soft)" }}>
+        <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>🎒 학생인가요?</p>
+        <p className="mini" style={{ margin: "4px 0 0", color: "var(--ink)" }}>
+          구글 로그인은 필요 없어요. 선생님이 준 <b>우리 반 입장 링크(QR)</b>로 들어가요.
+        </p>
+        <HelpLink to={HELP.loggedOut}>🙋 입장 링크가 없어요</HelpLink>
+      </div>
+
       <p className="mini" style={{ marginTop: 14 }}>
+        <a href="/help" style={{ textDecoration: "underline" }}>🙋 로그인이 안 될 때</a>
+        {" · "}
         <a href="/manual.html" style={{ textDecoration: "underline" }}>❓ BookKing 사용 설명서 보기</a>
         {" · "}
         <a href="/tips" style={{ textDecoration: "underline" }}>📖 독서록 쓰는 법</a>

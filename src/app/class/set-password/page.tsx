@@ -4,6 +4,8 @@ import { requireUser } from "@/lib/session";
 import { getStudentEntry } from "@/lib/student";
 import { setStudentPassword } from "@/lib/actions/group-actions";
 import { SubmitButton } from "@/components/SubmitButton";
+import { HelpLink } from "@/components/HelpLink";
+import { HELP } from "@/lib/help";
 
 /**
  * 학생 개인 비밀번호 설정 — 최초 입장 직후, 그리고 이미 입장했지만
@@ -36,8 +38,21 @@ export default async function SetStudentPasswordPage({
           다음부터는 <b>별명과 이 비밀번호</b>로 들어올 수 있어요. 반번호는 몰라도 돼요.
         </p>
 
-        {error === "short" && <div className="toast err" style={{ marginBottom: 12 }}>비밀번호는 4자 이상으로 정해주세요.</div>}
-        {error === "mismatch" && <div className="toast err" style={{ marginBottom: 12 }}>두 번 입력한 비밀번호가 서로 달라요.</div>}
+        {error === "short" && (
+          <div className="toast err" style={{ marginBottom: 12 }}>
+            비밀번호는 4자 이상으로 정해 주세요.
+            <span className="toast-sub">예: 좋아하는 동물 이름 + 숫자처럼, 나만 알고 잊지 않을 걸로 정해 보세요.</span>
+          </div>
+        )}
+        {error === "mismatch" && (
+          <div className="toast err" style={{ marginBottom: 12 }}>
+            두 번 입력한 비밀번호가 서로 달라요.
+            <span className="toast-sub">두 칸에 똑같이 입력해 주세요. 자판이 한글로 쳐지고 있지 않은지도 확인해요.</span>
+          </div>
+        )}
+        <p className="mini" style={{ margin: "0 0 10px" }}>
+          🔒 잊지 않을 비밀번호로 정하고, <b>친구에게는 알려 주지 마세요.</b>
+        </p>
 
         <form action={setStudentPassword}>
           <div style={{ display: "grid", gap: 8 }}>
@@ -50,7 +65,8 @@ export default async function SetStudentPasswordPage({
         </form>
 
         <p className="mini" style={{ margin: "12px 0 0" }}>
-          💡 잊어버리면 선생님께 말씀드리세요. 선생님이 초기화해주면 다시 정할 수 있어요.
+          💡 잊어버리면 선생님께 <b>비밀번호 초기화</b>를 부탁하세요. 내 기록은 그대로 남고, 새로 정할 수 있어요.{" "}
+          <HelpLink to={HELP.myPw}>자세히 보기</HelpLink>
         </p>
       </div>
 
