@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser, getCurrentMembership, isOwner } from "@/lib/session";
@@ -11,6 +11,8 @@ import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { CopyButton } from "@/components/CopyButton";
 import { SubmitButton } from "@/components/SubmitButton";
 import { GroupIconUpload } from "@/components/GroupIconUpload";
+import { QrCode } from "@/components/QrCode";
+import { requestOrigin } from "@/lib/origin";
 
 export default async function AdminGroupPage({
   searchParams,
@@ -53,12 +55,11 @@ export default async function AdminGroupPage({
   const canDeleteGroup = group.createdById === user.id;
   const claimedStudents = roster.filter((r) => r.claimedByUserId).length;
 
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  const inviteUrl = `${proto}://${host}/join/${group.inviteCode}`;
-  const classUrl = `${proto}://${host}/class/${group.inviteCode}`;
-  const reportUrl = group.reportSlug ? `${proto}://${host}/report/${group.reportSlug}` : null;
+  // QR 안내문(/admin/qr)과 같은 주소를 쓰도록 requestOrigin 하나로 만든다
+  const origin = await requestOrigin();
+  const inviteUrl = `${origin}/join/${group.inviteCode}`;
+  const classUrl = `${origin}/class/${group.inviteCode}`;
+  const reportUrl = group.reportSlug ? `${origin}/report/${group.reportSlug}` : null;
   const expiryDays = daysUntilExpiry(group);
   // <input type="date">가 요구하는 YYYY-MM-DD (로컬 기준)
   const toDateInput = (d: Date) =>
@@ -207,22 +208,40 @@ export default async function AdminGroupPage({
 
           <section className="card">
             <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>🔗 초대 링크</h3>
-            <input className="input" readOnly value={inviteUrl} aria-label="초대 링크" />
-            <p className="mini" style={{ margin: "8px 0 10px" }}>
-              {inviteExpired ? (
-                <span style={{ color: "var(--danger)", fontWeight: 700 }}>⏰ 만료됐어요 — 새 링크를 발급해주세요</span>
-              ) : (
-                <>{fmtDateFull(group.inviteExpiresAt)}까지 유효 ({daysLeft}일 남음)</>
+            <div className="qr-row">
+              {/* 학교 모드에서는 초대 링크가 학생 입장 화면으로 넘어가므로 QR은 아래 학생 입장 링크에서 만든다 */}
+              {!group.classroomMode && !inviteExpired && (
+                <QrCode text={inviteUrl} size={104} label="초대 링크 QR" />
               )}
-            </p>
-            <span className="fieldrow" style={{ gap: 8 }}>
-              <form action={regenerateInvite} style={{ display: "inline" }}>
-                <ConfirmSubmit message="기존 링크는 무효화돼요." className="btn sm pri">
-                  새 링크 발급
-                </ConfirmSubmit>
-              </form>
-              <CopyButton text={inviteUrl} />
-            </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <input className="input" readOnly value={inviteUrl} aria-label="초대 링크" />
+                <p className="mini" style={{ margin: "8px 0 10px" }}>
+                  {inviteExpired ? (
+                    <span style={{ color: "var(--danger)", fontWeight: 700 }}>⏰ 만료됐어요 — 새 링크를 발급해주세요</span>
+                  ) : (
+                    <>{fmtDateFull(group.inviteExpiresAt)}까지 유효 ({daysLeft}일 남음)</>
+                  )}
+                </p>
+                <span className="fieldrow" style={{ gap: 8 }}>
+                  <form action={regenerateInvite} style={{ display: "inline" }}>
+                    <ConfirmSubmit
+                      message={
+                        group.classroomMode
+                          ? "기존 링크가 무효화돼요. 학생 입장 링크도 함께 바뀌어서, 나눠주거나 붙여둔 입장 QR이 더 이상 열리지 않아요. 새 QR을 다시 나눠줘야 해요."
+                          : "기존 링크와 나눠준 QR이 무효화돼요."
+                      }
+                      className="btn sm pri"
+                    >
+                      새 링크 발급
+                    </ConfirmSubmit>
+                  </form>
+                  <CopyButton text={inviteUrl} />
+                  {!group.classroomMode && !inviteExpired && (
+                    <Link href="/admin/qr" className="btn sm">📱 QR 크게 보기·인쇄</Link>
+                  )}
+                </span>
+              </div>
+            </div>
           </section>
 
           <section className="card">
@@ -296,8 +315,19 @@ export default async function AdminGroupPage({
             <div style={{ display: "grid", gap: 16 }}>
               <div>
                 <label className="mini" style={{ fontWeight: 800 }}>🔗 학생 입장 링크</label>
-                <input className="input" readOnly value={classUrl} aria-label="학생 입장 링크" style={{ marginTop: 4 }} />
-                <div style={{ marginTop: 8 }}><CopyButton text={classUrl} /></div>
+                <div className="qr-row" style={{ marginTop: 4 }}>
+                  <QrCode text={classUrl} size={104} label="학생 입장 링크 QR" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <input className="input" readOnly value={classUrl} aria-label="학생 입장 링크" />
+                    <div className="fieldrow" style={{ gap: 8, marginTop: 8 }}>
+                      <CopyButton text={classUrl} />
+                      <Link href="/admin/qr" className="btn sm pri">📱 QR 크게 보기·인쇄</Link>
+                    </div>
+                    <p className="mini" style={{ margin: "6px 0 0" }}>
+                      수업 화면에 띄우거나 인쇄해서 붙여두세요. 학생은 카메라로 찍기만 하면 돼요.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <form action={setJoinPassword}>

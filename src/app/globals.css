@@ -251,6 +251,29 @@ label.flabel { font-size: 13px; font-weight: 800; display: block; margin: 14px 0
   .admin-grid, .admin-grid.even { grid-template-columns: 1fr; }
 }
 
+/* ── QR (입장·초대 링크) ── */
+.qr {
+  display: inline-block; flex: none; line-height: 0; overflow: hidden;
+  background: #fff; border: 2px solid var(--bd); border-radius: 10px;
+}
+.qr svg { display: block; width: 100%; height: 100%; }
+.qr-row { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.qr-sheet { text-align: center; padding: 28px 20px; }
+.qr-big { width: min(300px, 74vw); aspect-ratio: 1; }
+.qr-steps {
+  display: inline-block; text-align: left; margin: 20px auto 0; padding-left: 22px;
+  font-size: 15px; line-height: 1.9;
+  word-break: keep-all; /* "정해/요"처럼 낱말 중간에서 줄이 끊기지 않게 */
+}
+.qr-url { word-break: break-all; font-size: 13px; color: var(--ink); }
+@media print {
+  /* A4 한 장에 크게 — 붙여둔 종이를 1m 남짓 떨어져서도 찍을 수 있는 크기 */
+  .qr-sheet { padding: 1.5cm 0 0; }
+  .qr-big { width: 12cm; }
+  .qr-steps { font-size: 14pt; }
+  .qr { border-color: #000; }
+}
+
 /* ── 테이블 ── */
 table.mt { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 table.mt th {
