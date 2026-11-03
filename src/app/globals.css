@@ -252,6 +252,19 @@ label.flabel { font-size: 13px; font-weight: 800; display: block; margin: 14px 0
 .col-no { width: 62px; }
 .col-n { width: 56px; }
 
+/* 학교 그룹 — 반마다 접히는 학생 목록 */
+.roomgroup { border: 2px solid var(--bd); border-radius: 12px; background: var(--panel); margin-bottom: 8px; }
+.roomgroup.care { background: var(--sun-soft); }
+.roomgroup > summary {
+  cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap;
+  padding: 9px 12px; font-size: 13.5px;
+}
+.roomgroup > summary::-webkit-details-marker { display: none; }
+.roomgroup > summary::before { content: "▸"; color: var(--accent); font-weight: 900; width: 10px; }
+.roomgroup[open] > summary::before { content: "▾"; }
+.roomgroup[open] > summary { border-bottom: 1.5px dashed var(--soft-line); }
+.roomgroup > .roomgroup-body { padding: 4px 8px 8px; background: var(--panel); border-radius: 0 0 10px 10px; }
+
 /* ── 랭킹 사이드바 ── */
 .rank-tabs {
   display: flex; gap: 5px; background: var(--chip); border: 2px solid var(--bd);

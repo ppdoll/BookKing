@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireUser, getCurrentMembership, isOwner } from "@/lib/session";
 import { ROLE, ROLE_LABEL, type Role } from "@/lib/constants";
 import { fmtDate, fmtDateFull } from "@/lib/format";
-import { regenerateInvite, setMemberRole, transferOwnership, updateGroupOptions, removeMember, setJoinPassword, addRosterStudents, removeRosterStudent, resetRosterClaim, resetStudentPassword, setGroupExpiry, deleteGroup, setClassroomReportShare } from "@/lib/actions/group-actions";
+import { regenerateInvite, setMemberRole, transferOwnership, updateGroupOptions, removeMember, setJoinPassword, addRosterStudents, setGroupExpiry, deleteGroup, setClassroomReportShare } from "@/lib/actions/group-actions";
 import { daysUntilExpiry, inviteLinkValidity } from "@/lib/group-expiry";
 import { restoreRecord } from "@/lib/actions/record-actions";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
@@ -13,6 +13,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { GroupIconUpload } from "@/components/GroupIconUpload";
 import { QrCode } from "@/components/QrCode";
 import { requestOrigin } from "@/lib/origin";
+import { RosterList } from "@/components/RosterList";
 
 export default async function AdminGroupPage({
   searchParams,
@@ -374,55 +375,15 @@ export default async function AdminGroupPage({
               </form>
             </div>
 
-            {/* 명렬 표 */}
-            <div className="tablewrap">
+            {/* 명렬 표 — 학교 그룹이면 반마다 접힌다 */}
+            <div>
               <p className="mini" style={{ fontWeight: 800, margin: "0 0 8px" }}>
                 등록된 명렬 <span className="mini">{roster.length}명 · 입장 {roster.filter((r) => r.claimedByUserId).length}명</span>
               </p>
               {roster.length === 0 ? (
                 <p className="mini" style={{ margin: 0 }}>아직 등록된 명렬이 없어요. 왼쪽에서 추가해주세요.</p>
               ) : (
-                <table className="mt">
-                  <thead>
-                    <tr><th style={{ width: 70 }}>반번호</th><th>별명</th><th>상태</th><th style={{ width: 210 }}>관리</th></tr>
-                  </thead>
-                  <tbody>
-                    {roster.map((s) => (
-                      <tr key={s.id}>
-                        <td className="num"><b>{s.classNo}</b></td>
-                        <td>{s.nickname}</td>
-                        <td>
-                          <span className={`pill ${s.claimedByUserId ? "p-done" : "p-ghost"}`}>
-                            {s.claimedByUserId ? "입장함" : "대기"}
-                          </span>
-                          {s.claimedByUserId && !s.password && (
-                            <span className="pill p-wish" style={{ marginLeft: 4 }}>비번 미설정</span>
-                          )}
-                        </td>
-                        <td>
-                          <span className="fieldrow" style={{ gap: 6 }}>
-                            {s.claimedByUserId && s.password && (
-                              <form action={resetStudentPassword} style={{ display: "inline" }}>
-                                <input type="hidden" name="studentId" value={s.id} />
-                                <ConfirmSubmit message={`${s.nickname} 비밀번호 초기화?`} className="btn sm">🔑 비번 초기화</ConfirmSubmit>
-                              </form>
-                            )}
-                            {s.claimedByUserId && (
-                              <form action={resetRosterClaim} style={{ display: "inline" }}>
-                                <input type="hidden" name="studentId" value={s.id} />
-                                <ConfirmSubmit message={`${s.classNo}번 배정 초기화?`} className="btn sm">배정 초기화</ConfirmSubmit>
-                              </form>
-                            )}
-                            <form action={removeRosterStudent} style={{ display: "inline" }}>
-                              <input type="hidden" name="studentId" value={s.id} />
-                              <ConfirmSubmit message={`${s.classNo}번(${s.nickname}) 삭제?`} className="btn sm dngr">삭제</ConfirmSubmit>
-                            </form>
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <RosterList roster={roster} />
               )}
             </div>
           </div>

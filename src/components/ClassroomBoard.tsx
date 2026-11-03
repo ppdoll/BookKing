@@ -1,15 +1,22 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import { fmtDate } from "@/lib/format";
-import { roomId, roomLabel, roomShort, sameRoom, type RoomKey } from "@/lib/class-no";
+import { parseClassNo, roomId, roomLabel, roomShort, sameRoom, type RoomKey } from "@/lib/class-no";
 import {
-  SORTS, sortStudents, scopeProgress, roomsNeedingCare,
-  type ClassroomProgress, type SchoolView, type SortKey,
+  SORTS, sortStudents, scopeProgress, roomsNeedingCare, studentsInRoom, summarizeProgress,
+  type ClassroomProgress, type SchoolView, type SortKey, type StudentProgress,
 } from "@/lib/classroom-dashboard";
 import { RoomComparison } from "@/components/RoomComparison";
 import { RoomPicker } from "@/components/RoomPicker";
 
 /** 상태별 색은 앱 전체의 pill(읽을예정·독서중·완독)과 같은 색을 쓴다 */
 const C = { wish: "var(--sun-soft)", reading: "var(--mint-soft)", done: "var(--accent)" };
+
+/** 챙겨볼 반의 이유별 안내 */
+const CARE_KINDS = [
+  { kind: "entry", label: "입장한 학생이 절반이 안 되는 반:", tip: "학생 입장 링크·QR을 다시 안내해 주세요" },
+  { kind: "idle", label: "최근 7일 동안 기록이 없는 반:", tip: "" },
+] as const;
 
 function Tile({ label, emoji, value, bg }: { label: string; emoji: string; value: number; bg: string }) {
   return (
@@ -71,6 +78,129 @@ function Metric({
   );
 }
 
+/** 학생별 표 — 같은 표 안에서 가장 많이 기록한 학생의 막대가 100%가 되게 맞춘다 */
+function StudentTable({ students }: { students: StudentProgress[] }) {
+  const maxTotal = Math.max(...students.map((s) => s.total), 1);
+  return (
+    <div className="tablewrap">
+      <table className="mt">
+        <thead>
+          <tr>
+            <th className="col-no">반번호</th>
+            <th>별명</th>
+            <th className="col-prog">진행</th>
+            <th className="hide-sm" style={{ width: 74 }}>읽을 예정</th>
+            <th className="hide-sm" style={{ width: 62 }}>독서중</th>
+            <th className="col-n">완독</th>
+            <th className="col-n">합계</th>
+            <th className="hide-sm" style={{ width: 86 }}>최근 활동</th>
+          </tr>
+        </thead>
+        <tbody>
+          {students.map((s) => (
+            <tr
+              key={s.id}
+              // 챙겨봐야 할 학생(미입장·기록 없음)은 살짝 강조
+              style={!s.entered || s.total === 0 ? { background: "var(--chip)" } : undefined}
+            >
+              <td className="num"><b>{s.classNo}</b></td>
+              <td>
+                <Link href={`/admin/student/${s.id}`} style={{ textDecoration: "underline" }}>
+                  {s.nickname}
+                </Link>
+                {!s.entered && <span className="pill p-ghost" style={{ marginLeft: 6 }}>미입장</span>}
+                {s.entered && !s.hasPassword && (
+                  <span className="pill p-wish" style={{ marginLeft: 6 }} title="아직 개인 비밀번호를 정하지 않았어요">🔑</span>
+                )}
+              </td>
+              <td><ProgressBar wish={s.wish} reading={s.reading} done={s.done} max={maxTotal} /></td>
+              <td className="num hide-sm">{s.wish || "-"}</td>
+              <td className="num hide-sm">{s.reading || "-"}</td>
+              <td className="num"><b>{s.done || "-"}</b></td>
+              <td className="num">{s.total || "-"}</td>
+              <td className="mini num hide-sm">{s.lastAt ? fmtDate(s.lastAt) : "-"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/**
+ * 학교 그룹의 학생 표 — 수백 명을 한 표에 펼치지 않고 반마다 접어 둔다.
+ * 제목 줄에 그 반의 입장·이번 주 활동·완독을 보여줘 펼치지 않고도 어느 반을 볼지 고를 수 있다.
+ * (정렬은 반 안에서 적용되고, 링크로 정렬을 바꿔도 펼친 반은 그대로 열려 있다)
+ */
+function RoomGroups({
+  data,
+  school,
+  sort,
+  careIds,
+  roomHref,
+}: {
+  data: ClassroomProgress;
+  school: SchoolView;
+  sort: SortKey;
+  careIds: Set<string>;
+  roomHref?: (room: RoomKey | null) => string;
+}) {
+  const multiGrade = school.layout.grades.length > 1;
+  const unmatched = data.students.filter((s) => !parseClassNo(s.classNo));
+  return (
+    <>
+      <p className="mini" style={{ margin: "0 0 8px" }}>
+        반을 누르면 학생 목록이 펼쳐져요.{careIds.size > 0 ? " 노란 반은 챙겨볼 반이에요." : ""}
+      </p>
+      {school.layout.grades.map((g) => (
+        <Fragment key={g}>
+          {multiGrade && <p className="mini" style={{ fontWeight: 800, margin: "12px 0 6px" }}>{g}학년</p>}
+          {school.layout.rooms
+            .filter((r) => r.grade === g)
+            .map((r) => {
+              const list = studentsInRoom(data.students, r);
+              const sum = summarizeProgress(list);
+              const care = careIds.has(roomId(r));
+              return (
+                <details key={roomId(r)} className={`roomgroup${care ? " care" : ""}`}>
+                  <summary>
+                    <b>{roomLabel(r)}</b>
+                    <span className="mini num">
+                      입장 {sum.enteredCount}/{sum.rosterCount} · 이번 주 {sum.weekActiveCount}명 · 완독 {sum.totals.done}권
+                    </span>
+                    {sum.noRecordCount > 0 && <span className="pill p-ghost">기록 없음 {sum.noRecordCount}</span>}
+                    {sum.noPasswordCount > 0 && (
+                      <span className="pill p-wish" title="개인 비밀번호를 아직 정하지 않은 학생">🔑 {sum.noPasswordCount}</span>
+                    )}
+                  </summary>
+                  <div className="roomgroup-body">
+                    {roomHref && (
+                      <p className="mini" style={{ margin: "4px 4px 6px", textAlign: "right" }}>
+                        <Link href={roomHref(r)} style={{ textDecoration: "underline" }}>이 반만 보기 →</Link>
+                      </p>
+                    )}
+                    <StudentTable students={sortStudents(list, sort)} />
+                  </div>
+                </details>
+              );
+            })}
+        </Fragment>
+      ))}
+      {unmatched.length > 0 && (
+        <details className="roomgroup">
+          <summary>
+            <b>반을 알 수 없는 학생</b>
+            <span className="mini num">{unmatched.length}명 · 반번호가 다섯 자리가 아니에요</span>
+          </summary>
+          <div className="roomgroup-body">
+            <StudentTable students={sortStudents(unmatched, sort)} />
+          </div>
+        </details>
+      )}
+    </>
+  );
+}
+
 export function ClassroomBoard({
   data,
   groupName,
@@ -95,9 +225,9 @@ export function ClassroomBoard({
   const { totals, rosterCount, enteredCount, noRecordCount, weekActiveCount, doneRate, participationRate, avgBooks } = scoped;
   const { noPasswordCount } = data;
   const students = sortStudents(scoped.students, sort);
-  const maxTotal = Math.max(...students.map((s) => s.total), 1);
 
   const care = school ? roomsNeedingCare(school.rooms) : [];
+  const careIds = new Set(care.map((c) => roomId(c.room)));
   const roomRank = room && school ? school.standings.findIndex((s) => sameRoom(s.room, room)) : -1;
   const reportHref = room ? `/admin/report?room=${roomId(room)}` : "/admin/report";
 
@@ -197,25 +327,41 @@ export function ClassroomBoard({
             🏫 반별 현황 <span className="mini">{school.layout.rooms.length}개 반{roomHref ? " · 반을 누르면 그 반만 봐요" : ""}</span>
           </h3>
           {care.length > 0 && (
-            <p className="mini" style={{ margin: "8px 0 10px", padding: "8px 12px", background: "var(--sun-soft)", borderRadius: 10 }}>
-              👀 <b>챙겨볼 반</b>{" "}
-              {care.map((c, i) => (
-                <span key={roomId(c.room)} style={{ whiteSpace: "nowrap" }}>
-                  {i > 0 && " · "}
-                  {roomHref ? (
-                    <Link href={roomHref(c.room)} style={{ textDecoration: "underline" }}>{roomShort(c.room)}반</Link>
-                  ) : (
-                    `${roomShort(c.room)}반`
-                  )}{" "}
-                  ({c.reason})
-                </span>
-              ))}
-            </p>
+            // 이유별로 묶는다 — 반마다 "(입장 0/26명)"을 늘어놓으면 출시 직후처럼 모든 반이 해당될 때 한없이 길어진다
+            <div className="mini" style={{ margin: "8px 0 10px", padding: "8px 12px", background: "var(--sun-soft)", borderRadius: 10 }}>
+              <b>👀 챙겨볼 반</b>
+              {CARE_KINDS.map(({ kind, label, tip }) => {
+                const list = care.filter((c) => c.kind === kind);
+                if (list.length === 0) return null;
+                return (
+                  <p key={kind} style={{ margin: "4px 0 0" }}>
+                    {label}{" "}
+                    {list.length === school.rooms.length ? (
+                      <b>모든 반({list.length}개)</b>
+                    ) : (
+                      list.map((c, i) => (
+                        <Fragment key={roomId(c.room)}>
+                          {i > 0 && " · "}
+                          {roomHref ? (
+                            <Link href={roomHref(c.room)} style={{ textDecoration: "underline", whiteSpace: "nowrap" }}>
+                              {roomShort(c.room)}반
+                            </Link>
+                          ) : (
+                            <span style={{ whiteSpace: "nowrap" }}>{roomShort(c.room)}반</span>
+                          )}
+                        </Fragment>
+                      ))
+                    )}
+                    {tip && ` — ${tip}`}
+                  </p>
+                );
+              })}
+            </div>
           )}
           <RoomComparison
             rooms={school.rooms}
             standings={school.standings}
-            careIds={new Set(care.map((c) => roomId(c.room)))}
+            careIds={careIds}
             roomHref={roomHref ? (r) => roomHref(r) : undefined}
           />
           <p className="mini" style={{ margin: "8px 0 0" }}>
@@ -272,49 +418,10 @@ export function ClassroomBoard({
           <p className="mini" style={{ margin: 0 }}>
             아직 등록된 명렬이 없어요. <b>👑 그룹 관리 → 🏫 학교(교실) 모드</b>에서 학생 명렬을 추가해주세요.
           </p>
+        ) : school && !room ? (
+          <RoomGroups data={data} school={school} sort={sort} careIds={careIds} roomHref={roomHref} />
         ) : (
-          <div className="tablewrap">
-            <table className="mt">
-              <thead>
-                <tr>
-                  <th className="col-no">반번호</th>
-                  <th>별명</th>
-                  <th className="col-prog">진행</th>
-                  <th className="hide-sm" style={{ width: 74 }}>읽을 예정</th>
-                  <th className="hide-sm" style={{ width: 62 }}>독서중</th>
-                  <th className="col-n">완독</th>
-                  <th className="col-n">합계</th>
-                  <th className="hide-sm" style={{ width: 86 }}>최근 활동</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.map((s) => (
-                  <tr
-                    key={s.id}
-                    // 챙겨봐야 할 학생(미입장·기록 없음)은 살짝 강조
-                    style={!s.entered || s.total === 0 ? { background: "var(--chip)" } : undefined}
-                  >
-                    <td className="num"><b>{s.classNo}</b></td>
-                    <td>
-                      <Link href={`/admin/student/${s.id}`} style={{ textDecoration: "underline" }}>
-                        {s.nickname}
-                      </Link>
-                      {!s.entered && <span className="pill p-ghost" style={{ marginLeft: 6 }}>미입장</span>}
-                      {s.entered && !s.hasPassword && (
-                        <span className="pill p-wish" style={{ marginLeft: 6 }} title="아직 개인 비밀번호를 정하지 않았어요">🔑</span>
-                      )}
-                    </td>
-                    <td><ProgressBar wish={s.wish} reading={s.reading} done={s.done} max={maxTotal} /></td>
-                    <td className="num hide-sm">{s.wish || "-"}</td>
-                    <td className="num hide-sm">{s.reading || "-"}</td>
-                    <td className="num"><b>{s.done || "-"}</b></td>
-                    <td className="num">{s.total || "-"}</td>
-                    <td className="mini num hide-sm">{s.lastAt ? fmtDate(s.lastAt) : "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <StudentTable students={students} />
         )}
       </section>
     </>

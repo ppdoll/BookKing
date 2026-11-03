@@ -248,12 +248,14 @@ export function scopeProgress(data: ClassroomProgress, room: RoomKey | null): Cl
  * 챙겨볼 반 — 절반도 입장하지 않았거나, 입장한 학생이 있는데 최근 7일 기록이 하나도 없는 반.
  * 이유를 함께 돌려줘 선생님이 무엇을 해야 할지 바로 알 수 있게 한다.
  */
-export function roomsNeedingCare(rooms: RoomSummary[]): { room: RoomKey; reason: string }[] {
-  const out: { room: RoomKey; reason: string }[] = [];
+export type CareRoom = { room: RoomKey; kind: "entry" | "idle"; reason: string };
+
+export function roomsNeedingCare(rooms: RoomSummary[]): CareRoom[] {
+  const out: CareRoom[] = [];
   for (const r of rooms) {
     if (r.roster === 0) continue;
-    if (r.entered * 2 < r.roster) out.push({ room: r.room, reason: `입장 ${r.entered}/${r.roster}명` });
-    else if (r.recentActive === 0) out.push({ room: r.room, reason: "최근 7일 기록 0명" });
+    if (r.entered * 2 < r.roster) out.push({ room: r.room, kind: "entry", reason: `입장 ${r.entered}/${r.roster}명` });
+    else if (r.recentActive === 0) out.push({ room: r.room, kind: "idle", reason: "최근 7일 기록 0명" });
   }
   return out;
 }
