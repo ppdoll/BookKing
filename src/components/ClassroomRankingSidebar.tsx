@@ -51,10 +51,11 @@ export function ClassroomRankingSidebar({
   const isRoom = scope.kind === "room";
   const href = (nrt: string, nrb: string) => `/?rt=${nrt}&rb=${nrb}`;
 
-  // 반 대항 — 상위 5개 반, 우리 반이 그 밖이면 맨 아래에 따로 보여준다
+  // 반 대항 — 완독이 있는 반만 상위 5개(0권끼리 공동 1위·🥉가 되지 않게), 우리 반이 그 밖이면 맨 아래에 따로
   const standings = isRoom ? [] : roomStandings(data, scope);
-  const topRooms = standings.slice(0, 5);
-  const myRoomRank = standings.findIndex((s) => sameRoom(s.room, me));
+  const topRooms = standings.filter((s) => s.done > 0).slice(0, 5);
+  const myRoom = standings.find((s) => sameRoom(s.room, me));
+  const showMyRoom = myRoom && topRooms.length > 0 && !topRooms.includes(myRoom);
 
   // 개인 — 우리 반은 5명, 학년·학교는 10명까지 별명을 보여주고, 내가 그 밖이면 내 순위만 따로
   const readers = readerStandings(data, scope);
@@ -83,6 +84,11 @@ export function ClassroomRankingSidebar({
           <p style={{ fontSize: 12.5, fontWeight: 800, margin: "12px 0 4px" }}>
             🏫 반 대항 <span className="mini">1인 평균 완독 (올해)</span>
           </p>
+          {topRooms.length === 0 && (
+            <p className="mini" style={{ margin: "4px 0 0" }}>
+              올해 완독한 반이 아직 없어요.{me ? " 첫 완독으로 우리 반을 올려 보세요!" : ""}
+            </p>
+          )}
           {topRooms.map((s) => (
             <div className={`rankrow${sameRoom(s.room, me) ? " mine" : ""}`} key={roomShort(s.room)}>
               <span className="rankno">{MEDALS[s.rank - 1] ?? s.rank}</span>
@@ -97,13 +103,15 @@ export function ClassroomRankingSidebar({
               </div>
             </div>
           ))}
-          {myRoomRank >= topRooms.length && (
+          {showMyRoom && (
             <div className="rankrow mine">
-              <span className="rankno">{standings[myRoomRank].rank}</span>
+              <span className="rankno">{myRoom.done > 0 ? myRoom.rank : "–"}</span>
               <div className="grow">
-                <b>{roomLabel(standings[myRoomRank].room)} (우리 반)</b>
+                <b>{roomLabel(myRoom.room)} (우리 반)</b>
                 <span className="mini">
-                  1인 {standings[myRoomRank].avg}권 · 완독 {standings[myRoomRank].done}권 · {standings[myRoomRank].roster}명
+                  {myRoom.done > 0
+                    ? `1인 ${myRoom.avg}권 · 완독 ${myRoom.done}권 · ${myRoom.roster}명`
+                    : `아직 완독 0권 · ${myRoom.roster}명`}
                 </span>
               </div>
             </div>

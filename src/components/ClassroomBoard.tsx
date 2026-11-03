@@ -155,8 +155,14 @@ export function ClassroomBoard({
         </h3>
         {school && roomRank >= 0 && (
           <p className="mini num" style={{ margin: "-4px 0 12px" }}>
-            🏫 반 대항 <b>{school.standings[roomRank].rank}위</b> / {school.standings.length}개 반 · 1인 완독{" "}
-            <b>{school.standings[roomRank].avg}권</b> (올해)
+            {school.standings[roomRank].done > 0 ? (
+              <>
+                🏫 반 대항 <b>{school.standings[roomRank].rank}위</b> / {school.standings.length}개 반 · 1인 완독{" "}
+                <b>{school.standings[roomRank].avg}권</b> (올해)
+              </>
+            ) : (
+              "🏫 반 대항 — 올해 완독이 아직 없어 순위가 없어요"
+            )}
           </p>
         )}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
