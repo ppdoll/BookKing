@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUser, getCurrentMembership, getMemberships, isAdmin, isOwner, canWriteInGroup } from "@/lib/session";
 import { STATUS, starsToRating } from "@/lib/constants";
+import { canViewPrivateNotes } from "@/lib/visibility";
 
 /** ISBN이 있으면 기존 Book 재사용(랭킹 집계용), 없으면 제목+저자로 매칭 */
 async function upsertBook(data: {
@@ -63,6 +64,8 @@ function parseRecordForm(formData: FormData) {
     memorableQuote: String(formData.get("quote") ?? "").trim() || null,
     review: String(formData.get("review") ?? "").trim() || null,
     isPrivate: formData.get("isPrivate") === "on",
+    // 비공개가 아니면 의미가 없으니 끈 것으로 본다
+    notesToAdmin: formData.get("isPrivate") === "on" && formData.get("notesToAdmin") === "on",
   };
 }
 
@@ -107,6 +110,7 @@ export async function createRecord(formData: FormData) {
       bookId: book.id,
       status: d.status,
       isPrivate: d.isPrivate,
+      notesToAdmin: d.notesToAdmin,
       startDate: d.startDate,
       endDate: d.endDate,
       rating: d.rating,
@@ -142,18 +146,26 @@ export async function updateRecord(formData: FormData) {
   if (error) redirect(`/books/${id}/edit?error=${encodeURIComponent(error)}`);
 
   const book = await upsertBook(d);
+  const isAuthor = record.userId === user.id;
+  // 관리자가 볼 수 없는 문장·느낀 점은 수정 화면에 보내지 않았다 — 빈 값으로 덮어쓰지 않게 그대로 둔다
+  const notesHidden = !canViewPrivateNotes(record, {
+    viewerId: user.id,
+    viewerIsGroupAdmin: isAdmin(membership.role),
+  });
   await prisma.readingRecord.update({
     where: { id },
     data: {
       bookId: book.id,
       status: d.status,
-      isPrivate: d.isPrivate,
+      // 비공개 설정(누구에게 보일지)은 쓴 사람만 바꾼다
+      isPrivate: isAuthor ? d.isPrivate : record.isPrivate,
+      notesToAdmin: isAuthor ? d.notesToAdmin : record.notesToAdmin,
       startDate: d.startDate,
       endDate: d.endDate,
       rating: d.rating,
       recommendMbti: d.recommendMbti,
-      memorableQuote: d.memorableQuote,
-      review: d.review,
+      memorableQuote: notesHidden ? record.memorableQuote : d.memorableQuote,
+      review: notesHidden ? record.review : d.review,
     },
   });
   revalidatePath("/");

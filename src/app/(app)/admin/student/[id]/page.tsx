@@ -5,6 +5,7 @@ import { requireUser, isAdmin } from "@/lib/session";
 import { STATUS, STATUS_LABEL, type Status } from "@/lib/constants";
 import { fmtDate, fmtDateFull, readingDays } from "@/lib/format";
 import { isExpired } from "@/lib/group-expiry";
+import { canViewPrivateNotes } from "@/lib/visibility";
 import { Stars } from "@/components/Stars";
 
 /** 학교(교실) 모드 — 선생님이 학생 한 명의 독서 기록만 모아 보는 화면 */
@@ -128,13 +129,24 @@ export default async function StudentRecordsPage({
                           {r.status === STATUS.READING && r.startDate && ` · ${fmtDate(r.startDate)}부터`}
                         </p>
                         {r.rating !== null && <Stars rating={r.rating} size={13} />}
-                        {r.memorableQuote && (
-                          <p className="mini" style={{ margin: "4px 0 0", fontStyle: "italic" }}>
-                            “{r.memorableQuote}”
-                          </p>
-                        )}
-                        {r.review && (
-                          <p className="mini" style={{ margin: "4px 0 0", whiteSpace: "pre-wrap" }}>{r.review}</p>
+                        {/* 학생이 "선생님께 보여주기"를 켜지 않은 비공개 문장·느낀 점은 보여주지 않는다 */}
+                        {canViewPrivateNotes(r, { viewerId: user.id, viewerIsGroupAdmin: true }) ? (
+                          <>
+                            {r.memorableQuote && (
+                              <p className="mini" style={{ margin: "4px 0 0", fontStyle: "italic" }}>
+                                “{r.memorableQuote}”
+                              </p>
+                            )}
+                            {r.review && (
+                              <p className="mini" style={{ margin: "4px 0 0", whiteSpace: "pre-wrap" }}>{r.review}</p>
+                            )}
+                          </>
+                        ) : (
+                          (r.memorableQuote || r.review) && (
+                            <p className="mini" style={{ margin: "4px 0 0" }}>
+                              🔒 비공개 — 학생이 문장·느낀 점을 선생님께 보여주지 않았어요
+                            </p>
+                          )
                         )}
                       </div>
                     </div>

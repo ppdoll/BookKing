@@ -135,7 +135,8 @@ export default async function RecordDetailPage({
 
         {!showNotes && (record.memorableQuote || record.review) && (
           <p className="mini" style={{ marginTop: 14, padding: "8px 12px", background: "var(--chip)", borderRadius: 10 }}>
-            🔒 이 기록의 <b>문장과 느낀 점</b>은 비공개예요 — 작성자와 그룹장·운영자만 볼 수 있어요.
+            🔒 이 기록의 <b>문장과 느낀 점</b>은 비공개예요 — 쓴 사람만 볼 수 있어요
+            {record.notesToAdmin ? (record.group.classroomMode ? " (선생님도 볼 수 있어요)" : " (그룹장·운영자도 볼 수 있어요)") : ""}.
           </p>
         )}
 

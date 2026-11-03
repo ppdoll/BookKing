@@ -55,6 +55,8 @@ export default async function NewBookPage({
           mode="create"
           groups={writable.map((m) => ({ id: m.groupId, name: m.group.name }))}
           defaultGroupIds={[defaultGroupId]}
+          // 학교 모드 반에서 쓰면 "선생님께 보여주기"로 부른다
+          classroom={writable.find((m) => m.groupId === defaultGroupId)?.group.classroomMode ?? false}
           initial={{
             title: sp.title,
             author: sp.author,

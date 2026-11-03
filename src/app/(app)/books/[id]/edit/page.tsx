@@ -5,6 +5,7 @@ import { toDateInput } from "@/lib/format";
 import { ratingToStars } from "@/lib/constants";
 import { softDeleteRecord } from "@/lib/actions/record-actions";
 import { BookForm } from "@/components/BookForm";
+import { canViewPrivateNotes } from "@/lib/visibility";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 
 export default async function EditBookPage({
@@ -33,6 +34,11 @@ export default async function EditBookPage({
   if (!canEdit) redirect("/");
   // 보기 전용 그룹은 그룹장만 수정 가능
   if (!membership || !canWriteInGroup(membership.role, membership.group)) redirect(`/records/${record.id}`);
+  // 쓴 사람이 보여주지 않은 비공개 문장·느낀 점은 관리자에게 보내지 않는다 (입력칸에도 채우지 않음)
+  const notesHidden = !canViewPrivateNotes(record, {
+    viewerId: user.id,
+    viewerIsGroupAdmin: isAdmin(membership.role),
+  });
 
   return (
     <>
@@ -59,10 +65,14 @@ export default async function EditBookPage({
             endDate: toDateInput(record.endDate),
             stars: record.rating !== null ? ratingToStars(record.rating) : null,
             mbti: record.recommendMbti,
-            quote: record.memorableQuote,
-            review: record.review,
+            quote: notesHidden ? null : record.memorableQuote,
+            review: notesHidden ? null : record.review,
             isPrivate: record.isPrivate,
+            notesToAdmin: record.notesToAdmin,
           }}
+          classroom={membership.group.classroomMode}
+          privacyEditable={mine}
+          notesLocked={notesHidden}
         />
         <form action={softDeleteRecord} style={{ marginTop: 14, borderTop: "2px dashed var(--soft-line)", paddingTop: 12 }}>
           <input type="hidden" name="recordId" value={record.id} />
