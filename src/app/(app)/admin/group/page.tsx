@@ -5,7 +5,7 @@ import { requireUser, getCurrentMembership, isOwner } from "@/lib/session";
 import { ROLE, ROLE_LABEL, type Role } from "@/lib/constants";
 import { fmtDate, fmtDateFull } from "@/lib/format";
 import { regenerateInvite, setMemberRole, transferOwnership, updateGroupOptions, removeMember, setJoinPassword, addRosterStudents, removeRosterStudent, resetRosterClaim, resetStudentPassword, setGroupExpiry, deleteGroup, setClassroomReportShare } from "@/lib/actions/group-actions";
-import { daysUntilExpiry } from "@/lib/group-expiry";
+import { daysUntilExpiry, inviteLinkValidity } from "@/lib/group-expiry";
 import { restoreRecord } from "@/lib/actions/record-actions";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { CopyButton } from "@/components/CopyButton";
@@ -64,8 +64,13 @@ export default async function AdminGroupPage({
   // <input type="date">가 요구하는 YYYY-MM-DD (로컬 기준)
   const toDateInput = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  const inviteExpired = group.inviteExpiresAt < new Date();
-  const daysLeft = Math.ceil((group.inviteExpiresAt.getTime() - Date.now()) / 86400000);
+  // 학교 모드 반은 그룹 만료일까지, 일반 그룹은 발급 후 7일
+  const link = inviteLinkValidity(group);
+  const inviteExpired = link.expired;
+  const daysLeft = link.until ? Math.ceil((link.until.getTime() - Date.now()) / 86400000) : null;
+  const linkUntilText = link.until
+    ? `${fmtDateFull(link.until)}까지 유효 (${daysLeft}일 남음)`
+    : "기한 없이 계속 쓸 수 있어요";
 
   return (
     <>
@@ -218,8 +223,14 @@ export default async function AdminGroupPage({
                 <p className="mini" style={{ margin: "8px 0 10px" }}>
                   {inviteExpired ? (
                     <span style={{ color: "var(--danger)", fontWeight: 700 }}>⏰ 만료됐어요 — 새 링크를 발급해주세요</span>
+                  ) : group.classroomMode ? (
+                    <>
+                      {linkUntilText}
+                      {link.until ? " — 그룹 만료일과 같아요" : " — 그룹 만료일이 없어요"}. 새 링크를 발급하기 전까지
+                      학생 입장 링크와 QR이 그대로예요.
+                    </>
                   ) : (
-                    <>{fmtDateFull(group.inviteExpiresAt)}까지 유효 ({daysLeft}일 남음)</>
+                    <>{linkUntilText}</>
                   )}
                 </p>
                 <span className="fieldrow" style={{ gap: 8 }}>
@@ -325,6 +336,10 @@ export default async function AdminGroupPage({
                     </div>
                     <p className="mini" style={{ margin: "6px 0 0" }}>
                       수업 화면에 띄우거나 인쇄해서 붙여두세요. 학생은 카메라로 찍기만 하면 돼요.
+                    </p>
+                    <p className="mini" style={{ margin: "4px 0 0" }}>
+                      🗓 {link.until ? `${fmtDateFull(link.until)}(그룹 만료일)까지` : "기한 없이"} 같은 링크·QR을 계속
+                      써요. 새로 나눠줄 필요가 없어요.
                     </p>
                   </div>
                 </div>

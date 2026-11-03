@@ -4,6 +4,7 @@ import { requireUser, getCurrentMembership, isOwner } from "@/lib/session";
 import { fmtDateFull } from "@/lib/format";
 import { requestOrigin } from "@/lib/origin";
 import { qrPngDataUrl } from "@/lib/qr";
+import { inviteLinkValidity } from "@/lib/group-expiry";
 import { QrCode } from "@/components/QrCode";
 import { PrintButton } from "@/components/PrintButton";
 
@@ -22,7 +23,9 @@ export default async function AdminQrPage() {
   const origin = await requestOrigin();
   const url = `${origin}/${isClass ? "class" : "join"}/${group.inviteCode}`;
   // 만료된 초대 링크로 QR을 인쇄하면 붙여둔 뒤에야 안 열리는 걸 알게 된다 — 아예 만들지 않는다
-  const inviteExpired = !isClass && group.inviteExpiresAt < new Date();
+  // (학교 모드 반은 그룹 만료일까지 유효, 일반 그룹은 발급 후 7일)
+  const link = inviteLinkValidity(group);
+  const inviteExpired = link.expired;
   const png = inviteExpired ? null : await qrPngDataUrl(url);
   const fileName = `BookKing-${isClass ? "입장" : "초대"}QR-${group.name.replace(/[\\/:*?"<>|]/g, "")}.png`;
 
@@ -81,9 +84,9 @@ export default async function AdminQrPage() {
               <br />
               <b className="qr-url">{url}</b>
             </p>
-            {!isClass && (
+            {link.until && (
               <p className="mini" style={{ margin: "8px 0 0" }}>
-                이 링크는 <b>{fmtDateFull(group.inviteExpiresAt)}</b>까지 유효해요.
+                이 링크는 <b>{fmtDateFull(link.until)}</b>까지 쓸 수 있어요.
               </p>
             )}
           </>

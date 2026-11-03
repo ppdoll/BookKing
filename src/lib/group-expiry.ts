@@ -8,6 +8,21 @@ export function isExpired(group: { expiresAt: Date | null }, now = new Date()) {
   return group.expiresAt !== null && group.expiresAt <= now;
 }
 
+/**
+ * 초대·입장 링크가 언제까지 열리는지 — 그룹 관리·QR 안내문은 이 값만 보고 "언제까지 유효"를 말한다.
+ * - 학교 모드 반: 학생 입장(/class)과 /join(→ /class)은 발급 후 7일 기한을 보지 않고, 그룹이 만료될 때
+ *   함께 닫힌다. 그래서 링크도 그룹 만료일까지 — 만료일이 없으면 새로 발급하기 전까지 계속 쓴다.
+ *   (예전엔 이 경우에도 7일이 지나면 "만료됐어요"라고 떠서, 새 링크를 발급하는 순간 학생 링크·QR이 막혔다)
+ * - 일반 그룹: 발급 후 7일 (inviteExpiresAt).
+ */
+export function inviteLinkValidity(
+  group: { classroomMode: boolean; inviteExpiresAt: Date; expiresAt: Date | null },
+  now = new Date()
+): { until: Date | null; expired: boolean } {
+  if (group.classroomMode) return { until: group.expiresAt, expired: isExpired(group, now) };
+  return { until: group.inviteExpiresAt, expired: group.inviteExpiresAt < now };
+}
+
 /** 만료까지 남은 일수 — 만료일이 없으면 null, 이미 지났으면 0 */
 export function daysUntilExpiry(group: { expiresAt: Date | null }, now = new Date()) {
   if (!group.expiresAt) return null;
