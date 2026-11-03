@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { GoogleAccount } from "@/components/GoogleAccount";
 
 export type MoreItem = {
   href: string;
@@ -30,12 +31,15 @@ export function BottomNav({
   userName,
   roleLabel,
   uuid,
+  accountEmail = null,
   signOutSlot,
 }: {
   items: MoreItem[];
   userName: string;
   roleLabel: string;
   uuid: string;
+  /** 구글로 로그인했으면 그 이메일 (학생·개발용 계정은 null) */
+  accountEmail?: string | null;
   /** 로그아웃 폼(서버 액션) — 서버 컴포넌트에서 그대로 넘겨받는다 */
   signOutSlot: React.ReactNode;
 }) {
@@ -79,6 +83,11 @@ export function BottomNav({
           <b>{userName}</b> <span className="pill p-read">{roleLabel}</span>
           <span className="mini"> · UUID {uuid}</span>
         </p>
+        {accountEmail && (
+          <p className="sheet-acct">
+            <GoogleAccount email={accountEmail} /> <span className="mini">계정으로 로그인됨</span>
+          </p>
+        )}
         <div className="sheet-grid">
           {items.map((it) =>
             it.external ? (

@@ -18,6 +18,11 @@ if (googleEnabled) {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      // 항상 구글 계정을 고르게 한다. 학교·개인 구글 계정을 함께 쓰는 선생님이 많은데, 이 값이 없으면
+      // 브라우저에 구글 계정이 하나뿐이고 예전에 허용한 적이 있을 때 고르는 화면 없이 그 계정으로 바로
+      // 들어가 버려서 [다른 계정으로 로그인]을 눌러도 같은 계정으로 돌아온다.
+      // (권한 범위는 비워 두면 Auth.js가 openid profile email 로 채운다)
+      authorization: { params: { prompt: "select_account" } },
     })
   );
 }

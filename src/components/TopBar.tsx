@@ -2,8 +2,10 @@ import Link from "next/link";
 import { signOut } from "@/auth";
 import { ROLE_LABEL, type Role } from "@/lib/constants";
 import { isAdmin, isOwner } from "@/lib/session";
+import { googleEmail } from "@/lib/account";
 import { GroupSelect } from "@/components/GroupSelect";
 import { BottomNav, type MoreItem } from "@/components/BottomNav";
+import { GoogleAccount } from "@/components/GoogleAccount";
 
 /** 링크 옆 빨간 알림 뱃지 (데스크톱 상단 메뉴용) */
 function Badge({ count }: { count: number }) {
@@ -27,7 +29,7 @@ export function TopBar({
   pendingRequests = 0,
   pendingJoins = 0,
 }: {
-  user: { id: string; name: string | null };
+  user: { id: string; name: string | null; email?: string | null };
   memberships: {
     groupId: string;
     role: string;
@@ -40,6 +42,8 @@ export function TopBar({
 }) {
   const current = memberships.find((m) => m.groupId === currentGroupId);
   const role = (current?.role ?? "MEMBER") as Role;
+  // 구글로 들어온 사람만 — 학생·개발용 계정은 null
+  const accountEmail = googleEmail(user.email);
 
   // 개인 책장(또는 그룹 없음)일 때만 보이는 그룹 관련 메뉴
   const showGroupMenu = !current || Boolean(current.group.isPersonal);
@@ -135,7 +139,13 @@ export function TopBar({
         <div className="userbox">
           <b>{user.name}</b> <span className="pill p-read">{ROLE_LABEL[role]}</span>
           <br />
-          <span className="uuid">UUID {user.id.slice(0, 8)}</span> {signOutForm}
+          {/* 구글 계정이면 UUID 대신 이메일 — 사이트 관리도 사용자를 이메일로 찾는다 */}
+          {accountEmail ? (
+            <GoogleAccount email={accountEmail} />
+          ) : (
+            <span className="uuid">UUID {user.id.slice(0, 8)}</span>
+          )}{" "}
+          {signOutForm}
         </div>
       </header>
 
@@ -144,6 +154,7 @@ export function TopBar({
         userName={user.name ?? "이름 없음"}
         roleLabel={ROLE_LABEL[role]}
         uuid={user.id.slice(0, 8)}
+        accountEmail={accountEmail}
         signOutSlot={signOutForm}
       />
     </>
