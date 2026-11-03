@@ -212,6 +212,8 @@ export default async function AdminGroupPage({
             </form>
           </section>
 
+          {/* 학교 모드에서는 초대 링크가 학생 입장 링크와 같은 코드라 헷갈리기만 해서 숨긴다 (새 링크 발급은 학생 입장 링크 아래) */}
+          {!group.classroomMode && (
           <section className="card">
             <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>🔗 초대 링크</h3>
             <div className="qr-row">
@@ -255,6 +257,7 @@ export default async function AdminGroupPage({
               </div>
             </div>
           </section>
+          )}
 
           <section className="card">
             <h3 style={{ margin: "0 0 6px", fontSize: 15 }}>🗓 만료일 (자동 삭제)</h3>
@@ -342,6 +345,22 @@ export default async function AdminGroupPage({
                       🗓 {link.until ? `${fmtDateFull(link.until)}(그룹 만료일)까지` : "기한 없이"} 같은 링크·QR을 계속
                       써요. 새로 나눠줄 필요가 없어요.
                     </p>
+                    <details style={{ marginTop: 6 }}>
+                      <summary className="mini" style={{ cursor: "pointer", fontWeight: 700 }}>
+                        링크가 밖으로 퍼졌다면 — 새 링크 발급
+                      </summary>
+                      <p className="mini" style={{ margin: "6px 0" }}>
+                        새로 발급하면 지금 링크와 붙여 둔 QR이 더 이상 열리지 않아요. 꼭 필요할 때만 누르세요.
+                      </p>
+                      <form action={regenerateInvite}>
+                        <ConfirmSubmit
+                          message="기존 학생 입장 링크와 나눠주거나 붙여둔 QR이 더 이상 열리지 않아요. 새 QR을 다시 나눠줘야 해요."
+                          className="btn sm dngr"
+                        >
+                          새 링크 발급
+                        </ConfirmSubmit>
+                      </form>
+                    </details>
                   </div>
                 </div>
               </div>
