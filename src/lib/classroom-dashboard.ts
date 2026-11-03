@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 import { STATUS } from "@/lib/constants";
+import { parseClassNo, parseRoomId, roomId, sameRoom, type RoomKey, type RoomLayout } from "@/lib/class-no";
+import { getClassroomRankingData, roomStandings, type RoomStanding } from "@/lib/class-rankings";
 
 export type StudentProgress = {
   id: string;
@@ -13,12 +15,14 @@ export type StudentProgress = {
   done: number;
   total: number;
   lastAt: Date | null; // 마지막 기록 활동
+  /** 이번 주(월요일 00:00 KST 이후) 기록을 남겼는지 */
+  activeThisWeek: boolean;
   /** 이 학생이 기록한 책 (보고서의 "학생별 읽은 책"에 사용, 최근 기록 순) */
   books: { status: string; title: string; endDate: Date | null }[];
 };
 
-export type ClassroomProgress = {
-  students: StudentProgress[];
+/** 학생 목록 하나(반 전체, 또는 학교 그룹의 한 반)의 요약 지표 */
+export type ProgressSummary = {
   totals: { wish: number; reading: number; done: number; total: number };
   rosterCount: number;
   enteredCount: number;
@@ -33,6 +37,8 @@ export type ClassroomProgress = {
   /** 명렬 인원 1인당 평균 기록 권수 */
   avgBooks: number;
 };
+
+export type ClassroomProgress = ProgressSummary & { students: StudentProgress[] };
 
 /** 학생 표 정렬 기준 */
 export const SORTS = {
@@ -57,6 +63,8 @@ function startOfWeekKst(now = new Date()) {
   const mondayKst = Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate() - daysSinceMonday);
   return new Date(mondayKst - KST_OFFSET);
 }
+
+const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
 
 /** 반번호 자연 정렬 — "2"가 "10"보다 앞에 오도록 */
 function compareClassNo(a: string, b: string) {
@@ -91,6 +99,7 @@ export async function getClassroomProgress(groupId: string): Promise<ClassroomPr
         })
       : [];
 
+  const weekStart = startOfWeekKst();
   const byUser = new Map<
     string,
     { wish: number; reading: number; done: number; lastAt: Date | null; books: StudentProgress["books"] }
@@ -122,11 +131,17 @@ export async function getClassroomProgress(groupId: string): Promise<ClassroomPr
         done,
         total: wish + reading + done,
         lastAt: c?.lastAt ?? null,
+        activeThisWeek: Boolean(c?.lastAt && c.lastAt >= weekStart),
         books: c?.books ?? [],
       };
     })
     .sort((a, b) => compareClassNo(a.classNo, b.classNo));
 
+  return { students, ...summarizeProgress(students) };
+}
+
+/** 학생 목록의 합계·비율 — 반 전체에도, 학교 그룹의 한 반에도 같은 기준으로 쓴다 */
+export function summarizeProgress(students: StudentProgress[]): ProgressSummary {
   const totals = students.reduce(
     (acc, s) => ({
       wish: acc.wish + s.wish,
@@ -137,23 +152,110 @@ export async function getClassroomProgress(groupId: string): Promise<ClassroomPr
     { wish: 0, reading: 0, done: 0, total: 0 }
   );
 
-  const weekStart = startOfWeekKst();
   const rosterCount = students.length;
   const activeCount = students.filter((s) => s.total > 0).length;
-  const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
 
   return {
-    students,
     totals,
     rosterCount,
     enteredCount: students.filter((s) => s.entered).length,
     noRecordCount: students.filter((s) => s.entered && s.total === 0).length,
     noPasswordCount: students.filter((s) => s.entered && !s.hasPassword).length,
-    weekActiveCount: students.filter((s) => s.lastAt !== null && s.lastAt >= weekStart).length,
+    weekActiveCount: students.filter((s) => s.activeThisWeek).length,
     doneRate: pct(totals.done, totals.total),
     participationRate: pct(activeCount, rosterCount),
     avgBooks: rosterCount > 0 ? Math.round((totals.total / rosterCount) * 10) / 10 : 0,
   };
+}
+
+/** 학교 그룹에서 한 반 학생만 */
+export function studentsInRoom(students: StudentProgress[], room: RoomKey) {
+  return students.filter((s) => sameRoom(parseClassNo(s.classNo), room));
+}
+
+export type RoomSummary = {
+  room: RoomKey;
+  roster: number;
+  entered: number;
+  /** 1권 이상 기록한 학생 */
+  active: number;
+  weekActive: number;
+  /** 최근 7일 안에 기록한 학생 — 월요일 아침에도 "이번 주 0명"으로 몰리지 않게 챙겨볼 반 판단에 쓴다 */
+  recentActive: number;
+  noPassword: number;
+  /** 참여율 = 1권 이상 기록한 학생 / 명렬 인원 */
+  participationRate: number;
+};
+
+/** 학교 그룹의 반별 참여 현황 (반번호로 나눈 반 순서 그대로) */
+export function summarizeRooms(students: StudentProgress[], layout: RoomLayout): RoomSummary[] {
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const byRoom = new Map<string, StudentProgress[]>();
+  for (const s of students) {
+    const room = parseClassNo(s.classNo);
+    if (!room) continue;
+    byRoom.set(roomId(room), [...(byRoom.get(roomId(room)) ?? []), s]);
+  }
+  return layout.rooms.map((room) => {
+    const list = byRoom.get(roomId(room)) ?? [];
+    const active = list.filter((s) => s.total > 0).length;
+    return {
+      room,
+      roster: list.length,
+      entered: list.filter((s) => s.entered).length,
+      active,
+      weekActive: list.filter((s) => s.activeThisWeek).length,
+      recentActive: list.filter((s) => s.lastAt && s.lastAt >= weekAgo).length,
+      noPassword: list.filter((s) => s.entered && !s.hasPassword).length,
+      participationRate: pct(active, list.length),
+    };
+  });
+}
+
+/** 학교 그룹(반번호로 반을 나눌 수 있을 때)의 반별 보기 */
+export type SchoolView = {
+  layout: RoomLayout;
+  rooms: RoomSummary[];
+  /** 반 대항 순위 (올해 1인 평균 완독) — 학생 랭킹과 같은 숫자 */
+  standings: RoomStanding[];
+  /** 지금 보고 있는 반 — null이면 학교 전체 */
+  room: RoomKey | null;
+};
+
+/** 반을 나눌 수 없으면(형식이 다르거나 반이 하나뿐) null — 지금처럼 한 반으로 보여준다 */
+export async function getSchoolView(
+  groupId: string, students: StudentProgress[], year: number, roomParam?: string
+): Promise<SchoolView | null> {
+  const ranking = await getClassroomRankingData(groupId, year);
+  if (!ranking) return null;
+  const want = parseRoomId(roomParam);
+  return {
+    layout: ranking.layout,
+    rooms: summarizeRooms(students, ranking.layout),
+    standings: roomStandings(ranking, { kind: "school" }),
+    room: ranking.layout.rooms.find((r) => sameRoom(r, want)) ?? null,
+  };
+}
+
+/** 고른 반이 있으면 그 반 학생만으로 다시 집계한다 */
+export function scopeProgress(data: ClassroomProgress, room: RoomKey | null): ClassroomProgress {
+  if (!room) return data;
+  const students = studentsInRoom(data.students, room);
+  return { students, ...summarizeProgress(students) };
+}
+
+/**
+ * 챙겨볼 반 — 절반도 입장하지 않았거나, 입장한 학생이 있는데 최근 7일 기록이 하나도 없는 반.
+ * 이유를 함께 돌려줘 선생님이 무엇을 해야 할지 바로 알 수 있게 한다.
+ */
+export function roomsNeedingCare(rooms: RoomSummary[]): { room: RoomKey; reason: string }[] {
+  const out: { room: RoomKey; reason: string }[] = [];
+  for (const r of rooms) {
+    if (r.roster === 0) continue;
+    if (r.entered * 2 < r.roster) out.push({ room: r.room, reason: `입장 ${r.entered}/${r.roster}명` });
+    else if (r.recentActive === 0) out.push({ room: r.room, reason: "최근 7일 기록 0명" });
+  }
+  return out;
 }
 
 /**

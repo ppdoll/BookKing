@@ -12,16 +12,21 @@ import { getGroupSharedCards, getWrappedStats } from "@/lib/wrapped";
 import { Stars } from "@/components/Stars";
 import { RankingSidebar } from "@/components/RankingSidebar";
 import { ClassroomBoard } from "@/components/ClassroomBoard";
-import { getClassroomProgress, isSortKey, type SortKey } from "@/lib/classroom-dashboard";
+import { getClassroomProgress, getSchoolView, isSortKey, type SortKey } from "@/lib/classroom-dashboard";
+import { getClassroomRankingData } from "@/lib/class-rankings";
+import { roomId, roomLabel, sameRoom, type RoomKey } from "@/lib/class-no";
 import { WrappedCardCompact } from "@/components/WrappedCard";
 import { SubmitButton } from "@/components/SubmitButton";
 
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ rt?: string; rb?: string; cs?: string; joined?: string; left?: string; deleted?: string; error?: string }>;
+  searchParams: Promise<{
+    rt?: string; rb?: string; cs?: string; room?: string;
+    joined?: string; left?: string; deleted?: string; error?: string;
+  }>;
 }) {
-  const { rt = "group", rb = "rating", cs, joined, left, deleted, error } = await searchParams;
+  const { rt = "group", rb = "rating", cs, room, joined, left, deleted, error } = await searchParams;
   const user = await requireUser("/");
   const membership = await getCurrentMembership(user.id);
 
@@ -33,11 +38,9 @@ export default async function HomePage({
   // 학교(교실) 모드의 선생님(그룹장·운영자)에게는 본인 책장 대신 학생 현황을 보여준다
   const isClassAdmin = membership.group.classroomMode && isAdmin(membership.role);
   const classSort: SortKey = isSortKey(cs) ? cs : "no";
-  // 랭킹 탭 등 다른 쿼리는 유지하면서 정렬만 바꾸는 링크
-  const sortHref = (key: SortKey) => `/?rt=${rt}&rb=${rb}${key === "no" ? "" : `&cs=${key}`}`;
 
   const year = new Date().getFullYear();
-  const [myRecords, groupFeed, months, classProgress] = await Promise.all([
+  const [myRecords, groupFeed, groupMonths, classProgress, classRanking] = await Promise.all([
     isClassAdmin
       ? []
       : prisma.readingRecord.findMany({
@@ -53,7 +56,28 @@ export default async function HomePage({
     }),
     getMonthlyDone(isClassAdmin ? null : user.id, membership.groupId, year),
     isClassAdmin ? getClassroomProgress(membership.groupId) : null,
+    // 반번호로 반을 나누는 학교 그룹용 — 랭킹 사이드바와 같은 요청 안에서 한 번만 읽는다(cache)
+    isClassAdmin ? getClassroomRankingData(membership.groupId, year) : null,
   ]);
+
+  // 학교 그룹이면 반별 현황·반 고르기 (?room=3-1)
+  const school = classProgress ? await getSchoolView(membership.groupId, classProgress.students, year, room) : null;
+  const pickedRoom = school?.room ?? null;
+  // 반을 고르면 월별 완독 그래프도 그 반 학생만
+  const roomUserIds =
+    pickedRoom && classRanking
+      ? [...classRanking.students.values()].filter((s) => sameRoom(s.room, pickedRoom)).map((s) => s.userId)
+      : null;
+  const months = roomUserIds ? await getMonthlyDone(roomUserIds, membership.groupId, year) : groupMonths;
+
+  // 랭킹 탭·정렬·반 등 다른 쿼리는 유지하면서 하나만 바꾸는 링크
+  const homeHref = (o: { cs?: SortKey; room?: RoomKey | null }) => {
+    const sortKey = o.cs ?? classSort;
+    const r = o.room === undefined ? pickedRoom : o.room;
+    return `/?rt=${rt}&rb=${rb}${sortKey === "no" ? "" : `&cs=${sortKey}`}${r ? `&room=${roomId(r)}` : ""}`;
+  };
+  const sortHref = (key: SortKey) => homeHref({ cs: key });
+  const roomHref = (r: RoomKey | null) => homeHref({ room: r });
 
   const wish = myRecords.filter((r) => r.status === STATUS.WISH);
   const reading = myRecords.filter((r) => r.status === STATUS.READING);
@@ -88,6 +112,8 @@ export default async function HomePage({
               groupName={membership.group.name}
               sort={classSort}
               sortHref={sortHref}
+              school={school}
+              roomHref={roomHref}
             />
           ) : (
             <div className="board">
@@ -156,8 +182,13 @@ export default async function HomePage({
 
           <section className="card" style={{ marginBottom: 16 }}>
             <h3 style={{ margin: "0 0 14px", fontSize: 15 }}>
-              🗓️ {isClassAdmin ? "우리 반 올해의 독서 기록" : "올해의 독서 기록"}{" "}
-              <span className="mini">{year}년 · 월별 완독 수{isClassAdmin ? " (학생 전체)" : ""}</span>
+              🗓️{" "}
+              {isClassAdmin
+                ? `${pickedRoom ? roomLabel(pickedRoom) : school ? "학교 전체" : "우리 반"} 올해의 독서 기록`
+                : "올해의 독서 기록"}{" "}
+              <span className="mini">
+                {year}년 · 월별 완독 수{isClassAdmin ? (pickedRoom ? " (이 반 학생)" : " (학생 전체)") : ""}
+              </span>
             </h3>
             <div className="chart">
               {months.map((count, i) => (
@@ -249,7 +280,13 @@ export default async function HomePage({
           )}
         </div>
 
-        <RankingSidebar groupId={membership.groupId} rt={rt} rb={rb} />
+        <RankingSidebar
+          groupId={membership.groupId}
+          viewerId={user.id}
+          classroom={membership.group.classroomMode}
+          rt={rt}
+          rb={rb}
+        />
       </div>
     </>
   );

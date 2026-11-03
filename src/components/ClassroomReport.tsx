@@ -1,6 +1,8 @@
 import { fmtDate, fmtDateFull } from "@/lib/format";
 import { STATUS } from "@/lib/constants";
-import type { ClassroomProgress } from "@/lib/classroom-dashboard";
+import { roomLabel } from "@/lib/class-no";
+import type { ClassroomProgress, SchoolView } from "@/lib/classroom-dashboard";
+import { RoomComparison } from "@/components/RoomComparison";
 
 /** 상태별 색은 앱 전체의 pill(읽을예정·독서중·완독)과 같은 색 */
 const C = { wish: "var(--sun-soft)", reading: "var(--mint-soft)", done: "var(--accent)" };
@@ -24,20 +26,27 @@ export function ClassroomReport({
   data,
   groupName,
   printedAt,
+  school = null,
 }: {
+  /** 학교 그룹에서 한 반을 골랐다면 그 반 학생만으로 집계한 값 */
   data: ClassroomProgress;
   groupName: string;
   /** 보고서 생성 시각 (한국 시간 문자열) */
   printedAt: string;
+  /** 학교 그룹이면 반별 현황(학교 전체일 때)이나 고른 반 이름을 함께 싣는다 */
+  school?: SchoolView | null;
 }) {
   const { students, totals, rosterCount, enteredCount, weekActiveCount, doneRate, participationRate, avgBooks } = data;
   const maxTotal = Math.max(...students.map((s) => s.total), 1);
   const scale = (n: number) => `${(n / maxTotal) * 100}%`;
+  const room = school?.room ?? null;
 
   return (
     <article>
       <header style={{ borderBottom: "3px solid var(--bd)", paddingBottom: 10, marginBottom: 16 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>📚 학생 독서 현황</h1>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>
+          📚 {room ? `${roomLabel(room)} ` : ""}학생 독서 현황
+        </h1>
         <p className="mini" style={{ margin: "4px 0 0" }}>
           『{groupName}』 · 기준 시각 {printedAt}
         </p>
@@ -51,6 +60,16 @@ export function ClassroomReport({
         <Cell label="참여율" value={`${participationRate}%`} sub={`명렬 ${rosterCount}명 기준`} />
         <Cell label="1인 평균" value={`${avgBooks}권`} sub={`입장 ${enteredCount}/${rosterCount}명`} />
       </div>
+
+      {school && !room && (
+        <section style={{ marginBottom: 16, breakInside: "avoid" }}>
+          <h2 style={{ fontSize: 15, fontWeight: 800, margin: "0 0 8px" }}>🏫 반별 현황</h2>
+          <RoomComparison rooms={school.rooms} standings={school.standings} />
+          <p className="mini" style={{ margin: "6px 0 0" }}>
+            1인 완독 = 올해 완독한 책 수 ÷ 명렬 인원 (학생 랭킹의 반 대항과 같은 기준)
+          </p>
+        </section>
+      )}
 
       <p className="mini" style={{ margin: "0 0 10px" }}>
         📅 이번 주 활동 <b>{weekActiveCount}/{rosterCount}명</b>

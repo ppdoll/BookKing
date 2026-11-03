@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { fmtDate } from "@/lib/format";
-import { SORTS, sortStudents, type ClassroomProgress, type SortKey } from "@/lib/classroom-dashboard";
+import { roomId, roomLabel, roomShort, sameRoom, type RoomKey } from "@/lib/class-no";
+import {
+  SORTS, sortStudents, scopeProgress, roomsNeedingCare,
+  type ClassroomProgress, type SchoolView, type SortKey,
+} from "@/lib/classroom-dashboard";
+import { RoomComparison } from "@/components/RoomComparison";
+import { RoomPicker } from "@/components/RoomPicker";
 
 /** 상태별 색은 앱 전체의 pill(읽을예정·독서중·완독)과 같은 색을 쓴다 */
 const C = { wish: "var(--sun-soft)", reading: "var(--mint-soft)", done: "var(--accent)" };
@@ -70,16 +76,30 @@ export function ClassroomBoard({
   groupName,
   sort,
   sortHref,
+  school = null,
+  roomHref,
 }: {
   data: ClassroomProgress;
   groupName: string;
   sort: SortKey;
   /** 정렬 칩 링크 — 다른 쿼리(랭킹 탭 등)를 유지하면서 정렬만 바꾼다 */
   sortHref: (key: SortKey) => string;
+  /** 반번호로 반을 나눌 수 있는 학교 그룹이면 반별 현황과 반 고르기를 보여준다 */
+  school?: SchoolView | null;
+  /** 반 고르기 링크 — null이면 학교 전체 */
+  roomHref?: (room: RoomKey | null) => string;
 }) {
-  const { totals, rosterCount, enteredCount, noRecordCount, noPasswordCount, weekActiveCount, doneRate, participationRate, avgBooks } = data;
-  const students = sortStudents(data.students, sort);
+  const room = school?.room ?? null;
+  // 반을 고르면 합계·요약·학생 표가 모두 그 반 기준으로 바뀐다 (비밀번호 경고는 학교 전체 기준)
+  const scoped = scopeProgress(data, room);
+  const { totals, rosterCount, enteredCount, noRecordCount, weekActiveCount, doneRate, participationRate, avgBooks } = scoped;
+  const { noPasswordCount } = data;
+  const students = sortStudents(scoped.students, sort);
   const maxTotal = Math.max(...students.map((s) => s.total), 1);
+
+  const care = school ? roomsNeedingCare(school.rooms) : [];
+  const roomRank = room && school ? school.standings.findIndex((s) => sameRoom(s.room, room)) : -1;
+  const reportHref = room ? `/admin/report?room=${roomId(room)}` : "/admin/report";
 
   return (
     <>
@@ -91,6 +111,14 @@ export function ClassroomBoard({
       {noPasswordCount > 0 && (
         <div className="toast" style={{ background: "var(--sun-soft)" }}>
           🔑 개인 비밀번호를 아직 정하지 않은 학생이 <b>{noPasswordCount}명</b> 있어요.
+          {school && (
+            <span className="mini num" style={{ display: "block", marginTop: 4 }}>
+              {school.rooms
+                .filter((r) => r.noPassword > 0)
+                .map((r) => `${roomShort(r.room)}반 ${r.noPassword}명`)
+                .join(" · ")}
+            </span>
+          )}
           <span className="mini" style={{ display: "block", fontWeight: 400, marginTop: 4 }}>
             이 학생들은 로그아웃되거나 한참 뒤에 다시 들어올 때 <b>반 비밀번호</b>가 한 번 필요해요.
             수업 때 반 비밀번호를 알려주세요 — 기억나지 않으면{" "}
@@ -98,6 +126,19 @@ export function ClassroomBoard({
             새로 정하면 됩니다. 한 번 들어와 본인 비밀번호를 정하면 그다음부터는 필요 없어요.
           </span>
         </div>
+      )}
+
+      {/* 학교 그룹 — 보고 싶은 반 고르기 */}
+      {school && roomHref && (
+        <section className="card" style={{ marginBottom: 16 }}>
+          <RoomPicker layout={school.layout} room={room} href={roomHref} />
+          {school.layout.unmatched > 0 && (
+            <p className="mini" style={{ margin: "8px 0 0" }}>
+              ⚠️ 반번호가 다섯 자리(학년 1 + 반 2 + 번호 2, 예: 30107)가 아닌 학생 {school.layout.unmatched}명은 반별 현황과 반 대항에서 빠져요.
+              명렬에 학생을 추가할 때 다섯 자리로 적어주세요.
+            </p>
+          )}
+        </section>
       )}
 
       {/* 학생 전체 합계 */}
@@ -109,7 +150,15 @@ export function ClassroomBoard({
 
       {/* 반 전체 요약 지표 */}
       <section className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>📊 반 전체 요약</h3>
+        <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>
+          📊 {room ? `${roomLabel(room)} 요약` : school ? "학교 전체 요약" : "반 전체 요약"}
+        </h3>
+        {school && roomRank >= 0 && (
+          <p className="mini num" style={{ margin: "-4px 0 12px" }}>
+            🏫 반 대항 <b>{school.standings[roomRank].rank}위</b> / {school.standings.length}개 반 · 1인 완독{" "}
+            <b>{school.standings[roomRank].avg}권</b> (올해)
+          </p>
+        )}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
           <Metric
             label="완독률"
@@ -135,13 +184,48 @@ export function ClassroomBoard({
         </div>
       </section>
 
+      {/* 학교 그룹 — 반끼리 한눈에 비교 */}
+      {school && !room && (
+        <section className="card" style={{ marginBottom: 16 }}>
+          <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>
+            🏫 반별 현황 <span className="mini">{school.layout.rooms.length}개 반{roomHref ? " · 반을 누르면 그 반만 봐요" : ""}</span>
+          </h3>
+          {care.length > 0 && (
+            <p className="mini" style={{ margin: "8px 0 10px", padding: "8px 12px", background: "var(--sun-soft)", borderRadius: 10 }}>
+              👀 <b>챙겨볼 반</b>{" "}
+              {care.map((c, i) => (
+                <span key={roomId(c.room)} style={{ whiteSpace: "nowrap" }}>
+                  {i > 0 && " · "}
+                  {roomHref ? (
+                    <Link href={roomHref(c.room)} style={{ textDecoration: "underline" }}>{roomShort(c.room)}반</Link>
+                  ) : (
+                    `${roomShort(c.room)}반`
+                  )}{" "}
+                  ({c.reason})
+                </span>
+              ))}
+            </p>
+          )}
+          <RoomComparison
+            rooms={school.rooms}
+            standings={school.standings}
+            careIds={new Set(care.map((c) => roomId(c.room)))}
+            roomHref={roomHref ? (r) => roomHref(r) : undefined}
+          />
+          <p className="mini" style={{ margin: "8px 0 0" }}>
+            <b>1인 완독</b>은 올해 완독한 책 수를 명렬 인원으로 나눈 값이에요 — 학생 랭킹의 <b>반 대항</b>과 같은 기준이라 인원이 다른 반끼리도 공정하게 비교돼요.
+          </p>
+        </section>
+      )}
+
       <section className="card" style={{ marginBottom: 16 }}>
         <div className="fieldrow" style={{ gap: 8, alignItems: "baseline", margin: "0 0 4px" }}>
           <h3 style={{ margin: 0, fontSize: 15 }}>
-            🏫 학생 독서 현황 <span className="mini">『{groupName}』 · 명렬 {rosterCount}명</span>
+            🏫 {room ? `${roomLabel(room)} ` : ""}학생 독서 현황{" "}
+            <span className="mini">『{groupName}』 · 명렬 {rosterCount}명</span>
           </h3>
           <span style={{ flex: 1 }} />
-          <a href="/admin/report" target="_blank" rel="noreferrer" className="btn sm pri">
+          <a href={reportHref} target="_blank" rel="noreferrer" className="btn sm pri">
             📄 보고서 (인쇄·PDF)
           </a>
         </div>

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { getBookRankings, getTopReaders } from "@/lib/rankings";
+import { getClassroomRankingData } from "@/lib/class-rankings";
 import { RANKING_MIN_READERS } from "@/lib/constants";
 import { Stars } from "@/components/Stars";
+import { ClassroomRankingSidebar } from "@/components/ClassroomRankingSidebar";
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 const ANIMALS = ["🦉", "🐿️", "🦔", "🐰", "🦊"];
@@ -9,13 +11,23 @@ const ANIMALS = ["🦉", "🐿️", "🦔", "🐰", "🦊"];
 /** 우측 랭킹 사이드바 — rt: group|all, rb: rating|count (링크 탭, JS 불필요) */
 export async function RankingSidebar({
   groupId,
+  viewerId,
+  classroom,
   rt,
   rb,
 }: {
   groupId: string;
+  viewerId: string;
+  classroom: boolean;
   rt: string;
   rb: string;
 }) {
+  // 학교 전체·학년 전체를 한 그룹으로 운영하면 반번호로 반을 나눠 반·학년·학교 랭킹을 보여준다
+  if (classroom) {
+    const data = await getClassroomRankingData(groupId, new Date().getFullYear());
+    if (data) return <ClassroomRankingSidebar data={data} viewerId={viewerId} rt={rt} rb={rb} />;
+  }
+
   const scope = rt === "all" ? "all" : "group";
   const by = rb === "count" ? "count" : "rating";
   const [books, readers] = await Promise.all([

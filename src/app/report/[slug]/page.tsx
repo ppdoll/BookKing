@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { getClassroomProgress } from "@/lib/classroom-dashboard";
+import { getClassroomProgress, getSchoolView, scopeProgress } from "@/lib/classroom-dashboard";
+import { getClassroomRankingData } from "@/lib/class-rankings";
+import { roomId } from "@/lib/class-no";
 import { isExpired } from "@/lib/group-expiry";
 import { nowInKst } from "@/lib/report";
 import { ClassroomReport } from "@/components/ClassroomReport";
 import { PrintButton } from "@/components/PrintButton";
+import { RoomPicker } from "@/components/RoomPicker";
 
 /** 비밀 링크로만 열람 — 검색엔진 색인 금지 */
 export const metadata: Metadata = {
@@ -25,14 +28,20 @@ async function loadGroup(slug: string) {
 
 export default async function SharedReportPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ room?: string }>;
 }) {
   const { slug } = await params;
+  const { room } = await searchParams;
   const group = await loadGroup(slug);
   if (!group) notFound();
 
-  const data = await getClassroomProgress(group.id);
+  const year = new Date().getFullYear();
+  const [data] = await Promise.all([getClassroomProgress(group.id), getClassroomRankingData(group.id, year)]);
+  const school = await getSchoolView(group.id, data.students, year, room);
+  const base = `/report/${slug}`;
 
   return (
     <main className="container" style={{ maxWidth: 820 }}>
@@ -43,8 +52,18 @@ export default async function SharedReportPage({
         <span style={{ flex: 1 }} />
         <PrintButton />
       </p>
+      {school && (
+        <div className="card no-print" style={{ marginBottom: 14 }}>
+          <RoomPicker layout={school.layout} room={school.room} href={(r) => (r ? `${base}?room=${roomId(r)}` : base)} />
+        </div>
+      )}
       <div className="card print-plain">
-        <ClassroomReport data={data} groupName={group.name} printedAt={nowInKst()} />
+        <ClassroomReport
+          data={scopeProgress(data, school?.room ?? null)}
+          groupName={group.name}
+          printedAt={nowInKst()}
+          school={school}
+        />
       </div>
       <p className="mini no-print" style={{ textAlign: "center", marginTop: 16 }}>
         이 페이지는 링크를 아는 사람만 볼 수 있어요. 선생님이 공유를 중지하면 열리지 않아요.
