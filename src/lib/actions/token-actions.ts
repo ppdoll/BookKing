@@ -15,7 +15,7 @@ export async function issueTokenAction(_prev: IssueTokenState, formData: FormDat
   const name = String(formData.get("name") ?? "").trim().slice(0, 30) || "Claude";
   const count = await prisma.apiToken.count({ where: { userId: user.id } });
   if (count >= API_TOKEN_LIMIT) {
-    return { error: `토큰은 ${API_TOKEN_LIMIT}개까지 만들 수 있어요. 안 쓰는 토큰을 먼저 지워주세요.` };
+    return { error: `연결 주소는 ${API_TOKEN_LIMIT}개까지 만들 수 있어요. 안 쓰는 주소를 먼저 지워주세요.` };
   }
 
   const token = await issueApiToken(user.id, name);
