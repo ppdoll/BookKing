@@ -3,6 +3,7 @@ import { signOut } from "@/auth";
 import { ROLE_LABEL, type Role } from "@/lib/constants";
 import { isAdmin, isOwner } from "@/lib/session";
 import { googleEmail } from "@/lib/account";
+import { canUseAiConnect } from "@/lib/api-token";
 import { GroupSelect } from "@/components/GroupSelect";
 import { BottomNav, type MoreItem } from "@/components/BottomNav";
 import { GoogleAccount } from "@/components/GoogleAccount";
@@ -44,6 +45,8 @@ export function TopBar({
   const role = (current?.role ?? "MEMBER") as Role;
   // 구글로 들어온 사람만 — 학생·개발용 계정은 null
   const accountEmail = googleEmail(user.email);
+  // 학생 계정에는 AI 연결 메뉴를 보이지 않는다
+  const aiAllowed = canUseAiConnect({ email: user.email ?? null });
 
   // 개인 책장(또는 그룹 없음)일 때만 보이는 그룹 관련 메뉴
   const showGroupMenu = !current || Boolean(current.group.isPersonal);
@@ -68,6 +71,7 @@ export function TopBar({
     ...(inGroup && isAdmin(current!.role) ? [{ href: "/admin/posts", label: "🧹 글 관리" }] : []),
     ...(inGroup && isOwner(current!.role) ? [{ href: "/admin/group", label: "👑 그룹 관리" }] : []),
     ...(isSiteAdmin ? [{ href: "/admin/site", label: "🛠 사이트 관리", badge: pendingRequests }] : []),
+    ...(aiAllowed ? [{ href: "/connect", label: "🤖 AI 연결" }] : []),
     { href: "/manual.html", label: "❓ 도움말", external: true },
   ];
 
@@ -134,6 +138,7 @@ export function TopBar({
               {pendingRequests > 0 && <Badge count={pendingRequests} />}
             </Link>
           )}
+          {aiAllowed && <Link href="/connect">🤖 AI 연결</Link>}
           <a href="/manual.html" target="_blank" rel="noreferrer">❓ 도움말</a>
         </nav>
         <div className="userbox">
